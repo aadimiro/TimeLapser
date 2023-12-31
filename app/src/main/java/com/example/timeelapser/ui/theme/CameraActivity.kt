@@ -26,7 +26,7 @@ import java.io.IOException
 import java.io.InputStreamReader
 import com.arthenica.mobileffmpeg.Config
 import com.arthenica.mobileffmpeg.FFmpeg
-
+import kotlinx.coroutines.*
 
 class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
 
@@ -74,74 +74,83 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
     }
 
     private fun compileVideo() {
+        GlobalScope.launch(Dispatchers.IO) {
+            val dcimDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM)
+            val imagesDir = File(dcimDir, "TimeElaps")
 
-        val dcimDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM)
-        val imagesDir = File(dcimDir, "TimeElaps")
+            val videoOutputPath = createOutputVideoPath()
 
-        val videoOutputPath = createOutputVideoPath()
+            val imagePattern = "${imagesDir}/timeelaps_${timeStampvid}_%04d.jpg"
 
-        val imagePattern = "${imagesDir}/timeelaps_${timeStampvid}_%04d.jpg"
-
-        // Get the list of image files
-        val imageFiles = mutableListOf<String>()
-        var i = 0
-        while (true) {
-            val imagePath = String.format(imagePattern, i)
-            val file = File(imagePath)
-            if (!file.exists()) {
-                println("File not found: $imagePath")
-                break
+            // Get the list of image files
+            val imageFiles = mutableListOf<String>()
+            var i = 0
+            while (true) {
+                val imagePath = String.format(imagePattern, i)
+                val file = File(imagePath)
+                if (!file.exists()) {
+                    println("File not found: $imagePath")
+                    break
+                }
+                imageFiles.add(imagePath)
+                i++
             }
-            imageFiles.add(imagePath)
-            i++
-        }
 
-        // Print the list of image files (for debugging)
-        println("Image files:")
-        imageFiles.forEach { println(it) }
+            // Print the list of image files (for debugging)
+            println("Image files:")
+            imageFiles.forEach { println(it) }
 
-        val ffmpegCommand = mutableListOf<String>().apply {
-            add("-framerate")
-            add("30")
-            add("-i")
-            add(imagePattern) // Use explicit file list
+            val ffmpegCommand = mutableListOf<String>().apply {
+                add("-framerate")
+                add("5")
+                add("-i")
+                add(imagePattern) // Use explicit file list
 
-            // Add all image files to the input specification
-            imageFiles.forEach { add("-i"); add(it) }
+                // Add all image files to the input specification
+                imageFiles.forEach { add("-i"); add(it) }
 
-            // Add the remaining encoding options
-            add("-c:v")
-            add("libx264")
-            add("-r")
-            add("30")
-            add("-pix_fmt")
-            add("yuv420p")
+                // Add the remaining encoding options
+                add("-c:v")
+                add("libx264")
+                add("-r")
+                add("30")
+                add("-pix_fmt")
+                add("yuv420p")
 
-            // Specify the output video path
-            add(videoOutputPath)
-        }
+                // Specify the output video path
+                add(videoOutputPath)
+            }
 
-        // Convert the ffmpegCommand array to a string
-        val commandString = ffmpegCommand.joinToString(" ")
+            // Convert the ffmpegCommand array to a string
+            val commandString = ffmpegCommand.joinToString(" ")
 
-        // Print the command to the log
-        println("FFmpeg Command: $commandString")
+            // Print the command to the log
+            println("FFmpeg Command: $commandString")
 
-        Config.enableStatisticsCallback { statistics ->
-            // You can handle FFmpeg statistics here
-            println("Statistics: $statistics")
-        }
+            // Execute FFmpeg command using withContext
+            val rc = withContext(Dispatchers.Default) {
+                Config.enableStatisticsCallback { statistics ->
+                    // You can handle FFmpeg statistics here
+                    println("Statistics: $statistics")
+                }
 
-        val rc = FFmpeg.execute(ffmpegCommand.toTypedArray())
-        if (rc == Config.RETURN_CODE_SUCCESS) {
-            // Video compilation successful
-            println("Video compilation successful")
-            timeStampvid = SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.getDefault()).format(Date())
-        } else {
-            // Handle failure
-            println("Video compilation failed, exit code: $rc")
+                FFmpeg.execute(ffmpegCommand.toTypedArray())
+            }
+
+            launch(Dispatchers.Main) {
+                if (rc == Config.RETURN_CODE_SUCCESS) {
+                    // Video compilation successful
+                    println("Video compilation successful")
+                    timeStampvid = SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.getDefault()).format(Date())
+                } else {
+                    // Handle failure
+                    println("Video compilation failed, exit code: $rc")
+                }
+            }
         }
     }
+
+
     private fun createOutputVideoPath(): String {
         val dcimDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM)
         val outputVideoDir = File(dcimDir, "TimeElapsVideo")
@@ -152,38 +161,46 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
         val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
         return File(outputVideoDir, "timeelaps_video_$timeStampvid.mp4").absolutePath
     }
-
     private fun capturePicture() {
-        try {
-            camera.takePicture(null, null) { data, _ ->
-                savePicture(data)
-                // Remove the increment here, it's done in savePicture now
-                camera.startPreview()
-            }
-        } catch (e: Exception) {
-            Log.e("CameraActivity", "Error capturing picture: ${e.message}")
-            e.printStackTrace()
-        }
-    }
-
-
-    private fun savePicture(data: ByteArray) {
-        val pictureFile = getOutputMediaFile()
-        pictureFile?.let {
+        GlobalScope.launch(Dispatchers.IO) {
             try {
-                val fos = FileOutputStream(it)
-                fos.write(data)
-                fos.close()
-                Log.d("CameraActivity", "Picture saved: ${it.absolutePath}")
-                pictureNumber++
+                camera.takePicture(null, null) { data, _ ->
+                    savePicture(data)
+                    // Remove the increment here, it's done in savePicture now
+                    camera.startPreview()
+                }
             } catch (e: Exception) {
-                Log.e("CameraActivity", "Error saving picture: ${e.message}")
+                Log.e("CameraActivity", "Error capturing picture: ${e.message}")
                 e.printStackTrace()
             }
         }
     }
 
+    private suspend fun savePictureAsync(data: ByteArray): File? = withContext(Dispatchers.IO) {
+        try {
+            val pictureFile = getOutputMediaFile()
+            pictureFile?.let {
+                val fos = FileOutputStream(it)
+                fos.write(data)
+                fos.close()
+                Log.d("CameraActivity", "Picture saved: ${it.absolutePath}")
+                pictureNumber++
+            }
+            pictureFile
+        } catch (e: Exception) {
+            Log.e("CameraActivity", "Error saving picture: ${e.message}")
+            e.printStackTrace()
+            null
+        }
+    }
 
+    private fun savePicture(data: ByteArray) {
+        GlobalScope.launch(Dispatchers.Main) {
+            savePictureAsync(data)?.let {
+                // This block runs on the main thread and can be used for any UI updates after the picture is saved.
+            }
+        }
+    }
 
     private fun getOutputMediaFile(): File? {
         val dcimDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM)
@@ -208,7 +225,24 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
         try {
             camera = Camera.open()
             setCameraDisplayOrientation()
-            setCameraZoom()  // Add this line
+            setCameraZoom()
+
+            val parameters = camera.parameters
+
+            // Check supported focus modes
+            val supportedFocusModes = parameters.supportedFocusModes
+            Log.d("CameraActivity", "Supported Focus Modes: ${supportedFocusModes.joinToString()}")
+
+            // Enable autofocus if supported
+            if (supportedFocusModes.contains(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE)) {
+                parameters.focusMode = Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE
+                Log.d("CameraActivity", "Autofocus enabled")
+            } else {
+                Log.d("CameraActivity", "Autofocus not supported")
+            }
+
+            camera.parameters = parameters
+
             camera.setPreviewDisplay(surfaceHolder)
             camera.startPreview()
         } catch (e: Exception) {
@@ -216,6 +250,8 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
             e.printStackTrace()
         }
     }
+
+
 
     private fun setCameraDisplayOrientation() {
         val info = Camera.CameraInfo()
@@ -268,6 +304,11 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
     private fun setCameraZoom() {
         val parameters = camera.parameters
 
+        // Set focus mode to autofocus
+        if (parameters.supportedFocusModes.contains(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE)) {
+            parameters.focusMode = Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE
+        }
+
         // Adjust the zoom level (0 to max zoom)
         val maxZoom = parameters.maxZoom
         if (parameters.isZoomSupported) {
@@ -279,5 +320,6 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
 
         camera.parameters = parameters
     }
+
 
 }

@@ -71,4 +71,5 @@ dependencies {
     //implementation("com.writingminds:FFmpegAndroid:0.3.2")
     ///implementation("com.arthenica:mobile-ffmpeg-min:4.4.LTS")
     implementation("com.arthenica:mobile-ffmpeg-full-gpl:4.4.LTS")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.5.2")
 }
