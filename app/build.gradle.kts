@@ -68,4 +68,7 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-test-manifest")
     // Other dependencies
     implementation("androidx.appcompat:appcompat:1.3.1")
+    //implementation("com.writingminds:FFmpegAndroid:0.3.2")
+    ///implementation("com.arthenica:mobile-ffmpeg-min:4.4.LTS")
+    implementation("com.arthenica:mobile-ffmpeg-full-gpl:4.4.LTS")
 }
