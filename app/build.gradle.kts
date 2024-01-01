@@ -4,9 +4,23 @@ plugins {
 }
 
 android {
+
+    packagingOptions {
+        pickFirst("/lib/arm64-v8a/libopencv_java4.so")
+        pickFirst("/lib/armeabi-v7a/libopencv_java4.so")
+        pickFirst("/lib/x86/libopencv_java4.so")
+        pickFirst("/lib/x86_64/libopencv_java4.so")
+    }
+
+    packagingOptions {
+        pickFirst("lib/x86/libc++_shared.so")
+        pickFirst("lib/x86_64/libc++_shared.so")
+        pickFirst("lib/armeabi-v7a/libc++_shared.so")
+        pickFirst("lib/arm64-v8a/libc++_shared.so")
+    }
+
     namespace = "com.example.timeelapser"
     compileSdk = 34
-
     defaultConfig {
         applicationId = "com.example.timeelapser"
         minSdk = 24
@@ -47,6 +61,8 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+
+
 }
 
 dependencies {
@@ -68,8 +84,8 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-test-manifest")
     // Other dependencies
     implementation("androidx.appcompat:appcompat:1.3.1")
-    //implementation("com.writingminds:FFmpegAndroid:0.3.2")
-    ///implementation("com.arthenica:mobile-ffmpeg-min:4.4.LTS")
     implementation("com.arthenica:mobile-ffmpeg-full-gpl:4.4.LTS")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.5.2")
+    implementation("com.quickbirdstudios:opencv-contrib:4.5.3.0")
+
 }

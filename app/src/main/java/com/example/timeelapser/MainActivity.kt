@@ -12,7 +12,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.timeelapser.ui.theme.TimeElapserTheme
 import android.content.Intent
+import android.util.Log
 import com.example.timeelapser.ui.theme.CameraActivity
+import org.opencv.android.OpenCVLoader
 
 
 class MainActivity : ComponentActivity() {
@@ -30,6 +32,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+        Log.d("OPENCV", "OpenCV Loading Status ${OpenCVLoader.initDebug()}")
     }
 
     // Function to start CameraActivity

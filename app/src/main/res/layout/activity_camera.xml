@@ -5,9 +5,28 @@
     android:layout_height="match_parent"
     tools:context="com.example.timeelapser.ui.theme.CameraActivity">
 
+    <TextView
+        android:id="@+id/logTextView"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:layout_alignParentTop="false"
+        android:layout_marginTop="0dp"
+        android:background="#80000000"
+        android:padding="8dp"
+        android:textColor="#FFFFFF" />
+
     <SurfaceView
         android:id="@+id/surfaceView"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_width="1080px"
+        android:layout_height="1080px"
+        android:layout_marginTop="65dp" />
+
+    <ImageView
+        android:id="@+id/grayImageView"
+        android:layout_width="1080px"
+        android:layout_height="1080px"
+        android:layout_alignParentBottom="true"
+        android:layout_marginTop="146dp" />
+
 
 </RelativeLayout>

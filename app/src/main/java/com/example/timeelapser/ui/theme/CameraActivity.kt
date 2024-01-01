@@ -5,6 +5,9 @@ package com.example.timeelapser.ui.theme
 import android.Manifest
 import android.content.pm.PackageManager
 import android.hardware.Camera
+import android.app.Activity
+import android.graphics.Bitmap
+import android.graphics.ImageFormat
 import android.os.Bundle
 import android.os.Environment
 import android.util.Log
@@ -12,21 +15,30 @@ import android.view.KeyEvent
 import android.view.Surface
 import android.view.SurfaceHolder
 import android.view.SurfaceView
+import android.view.WindowManager
+import android.widget.ImageView
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
+import androidx.core.widget.TextViewCompat
 import com.example.timeelapser.R
+import kotlinx.coroutines.*
+import org.opencv.core.CvType
+import org.opencv.core.Mat
+import org.opencv.core.Size
+import org.opencv.core.Core
+import org.opencv.imgproc.Imgproc
+import org.opencv.android.OpenCVLoader
+import org.opencv.android.BaseLoaderCallback
+import org.opencv.android.LoaderCallbackInterface
 import java.io.File
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import java.io.BufferedReader
-import java.io.IOException
-import java.io.InputStreamReader
 import com.arthenica.mobileffmpeg.Config
 import com.arthenica.mobileffmpeg.FFmpeg
-import kotlinx.coroutines.*
+import org.opencv.android.Utils
+
 
 class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
 
@@ -34,6 +46,12 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
     private lateinit var camera: Camera
     private lateinit var surfaceView: SurfaceView
     private lateinit var surfaceHolder: SurfaceHolder
+    private lateinit var grayImageView: ImageView
+
+    private lateinit var rgba: Mat
+    private lateinit var gray: Mat
+
+    private lateinit var logTextView: TextView
 
     private lateinit var ffmpeg: com.arthenica.mobileffmpeg.FFmpeg // Declare private variable
 
@@ -43,7 +61,22 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        System.loadLibrary("opencv_java4")
+        Log.d("OPENCV", "OpenCV loaded successful: ${OpenCVLoader.initDebug()}")
+
+        // Keep the screen on
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
         setContentView(R.layout.activity_camera)
+
+        grayImageView = findViewById(R.id.grayImageView)
+
+        // Keep the screen on
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
+        // Initialize log TextView
+        logTextView = findViewById(R.id.logTextView)
 
         timeStampvid = SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.getDefault()).format(Date())
 
@@ -58,6 +91,32 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
         }
 
     }
+
+    // Function to append log messages to the TextView
+/*    private fun appendLogMessage(message: String) {
+        GlobalScope.launch(Dispatchers.Main) {
+            logTextView.append("$message\n")
+
+            // Scroll to the bottom to show the latest log messages
+            val scrollAmount = logTextView.layout.getLineTop(logTextView.lineCount) - logTextView.height
+            if (scrollAmount > 0) {
+                logTextView.scrollTo(0, scrollAmount)
+            }
+        }
+    }*/
+
+    private fun appendLogMessage(message: String) {
+        runOnUiThread {
+            logTextView.append("$message\n")
+
+            // Scroll to the bottom to show the latest log messages
+            val scrollAmount = logTextView.layout.getLineTop(logTextView.lineCount) - logTextView.height
+            if (scrollAmount > 0) {
+                logTextView.scrollTo(0, scrollAmount)
+            }
+        }
+    }
+
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         when (keyCode) {
@@ -224,10 +283,28 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
     private fun startCameraPreview() {
         try {
             camera = Camera.open()
+            configureCameraPreviewSize()
             setCameraDisplayOrientation()
             setCameraZoom()
 
+
             val parameters = camera.parameters
+
+            // Set preview format to NV21
+            parameters.previewFormat = ImageFormat.NV21
+
+            // Check supported preview formats
+            val supportedPreviewFormats = parameters.supportedPreviewFormats
+            Log.d("CameraActivity", "Supported Preview Formats: ${supportedPreviewFormats.joinToString()}")
+
+            // Check if NV21 is supported
+            if (supportedPreviewFormats.contains(ImageFormat.NV21)) {
+                Log.d("CameraActivity", "NV21 Preview Format is supported")
+            } else {
+                Log.e("CameraActivity", "NV21 Preview Format is not supported")
+                // Handle the case where NV21 is not supported, or choose another format if needed
+            }
+
 
             // Check supported focus modes
             val supportedFocusModes = parameters.supportedFocusModes
@@ -277,19 +354,7 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
         camera.setDisplayOrientation(result)
     }
 
-    override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
-        // Implementation for surfaceChanged
-    }
 
-    override fun surfaceCreated(holder: SurfaceHolder) {
-        Log.d("CameraActivity", "Surface created")
-        startCameraPreview()
-    }
-
-    override fun surfaceDestroyed(holder: SurfaceHolder) {
-        Log.d("CameraActivity", "Surface destroyed")
-        stopCameraPreview()
-    }
 
     private fun stopCameraPreview() {
         try {
@@ -312,7 +377,7 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
         // Adjust the zoom level (0 to max zoom)
         val maxZoom = parameters.maxZoom
         if (parameters.isZoomSupported) {
-            val desiredZoom = 5  // Adjust this value as needed
+            val desiredZoom = 0  // Adjust this value as needed
             if (desiredZoom >= 0 && desiredZoom <= maxZoom) {
                 parameters.zoom = desiredZoom
             }
@@ -321,5 +386,140 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
         camera.parameters = parameters
     }
 
+    private fun configureCameraPreviewSize() {
+        val parameters = camera.parameters
+
+        // Get a list of supported preview sizes
+        val supportedSizes = parameters.supportedPreviewSizes
+
+        // Choose the desired preview size (you can modify this based on your requirements)
+        val desiredWidth = 1080
+        val desiredHeight = 1080
+
+        // Find the closest supported size to the desired size
+        val bestSize = findBestPreviewSize(supportedSizes, desiredWidth, desiredHeight)
+
+        // Set the chosen preview size
+        bestSize?.let {
+            parameters.setPreviewSize(it.width, it.height)
+            camera.parameters = parameters
+        }
+    }
+
+    private fun findBestPreviewSize(sizes: List<Camera.Size>, desiredWidth: Int, desiredHeight: Int): Camera.Size? {
+        var bestSize: Camera.Size? = null
+        var minDiff = Int.MAX_VALUE
+
+
+
+        for (size in sizes) {
+            val diff = Math.abs(size.width - desiredWidth) + Math.abs(size.height - desiredHeight)
+
+            if (diff < minDiff) {
+                bestSize = size
+                minDiff = diff
+            }
+            var sizestrinw = size.width
+            var sizestrinh = size.height
+            Log.d("SIZESTRING","W: ${sizestrinw} x H:${sizestrinh}")
+        }
+
+        return bestSize
+    }
+
+    override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
+        // Implementation for surfaceChanged
+    }
+
+    override fun surfaceCreated(holder: SurfaceHolder) {
+        Log.d("CameraActivity", "Surface created")
+        startCameraPreview()
+
+        // Initialize OpenCV matrices
+        rgba = Mat()
+        gray = Mat()
+
+        // Set the preview callback
+        camera.setPreviewCallback(PreviewCallbackImpl())
+    }
+
+    // Inner class or object implementing Camera.PreviewCallback
+    private inner class PreviewCallbackImpl : Camera.PreviewCallback {
+        override fun onPreviewFrame(data: ByteArray, camera: Camera?) {
+            // Process the frame data with OpenCV
+            processDataWithOpenCV(data)
+        }
+    }
+
+
+    override fun surfaceDestroyed(holder: SurfaceHolder) {
+        Log.d("CameraActivity", "Surface destroyed")
+        stopCameraPreview()
+
+        // Release OpenCV matrices
+        rgba.release()
+        gray.release()
+    }
+
+    private fun processDataWithOpenCV(data: ByteArray) {
+        try {
+            // Convert the frame data to OpenCV Mat
+            val yuvImage = Mat(Size(surfaceView.width.toDouble(), surfaceView.height.toDouble()), CvType.CV_8UC1)
+            yuvImage.put(0, 0, data)
+
+            Imgproc.cvtColor(yuvImage, rgba, Imgproc.COLOR_YUV2RGB_NV21, 4)
+            Imgproc.cvtColor(rgba, gray, Imgproc.COLOR_RGBA2GRAY)
+            // Imgproc.cvtColor(yuvImage, gray, Imgproc.COLOR_YUV2GRAY_NV21,1)
+
+            Log.d("CameraActivity", "YUV Image Dimensions: ${yuvImage.width()} x ${yuvImage.height()}")
+            Log.d("CameraActivity", "RGBA Image Dimensions: ${rgba.width()} x ${rgba.height()}")
+            Log.d("CameraActivity", "Grayscale Image Dimensions: ${gray.width()} x ${gray.height()}")
+
+
+            // Analyze the grayscale image for brightness or color contrast change
+            if (isBedArrived(gray)) {
+                // Trigger capture or perform other actions
+                capturePicture()
+            }
+        } catch (e: Exception) {
+            Log.e("CameraActivity", "Error processing frame with OpenCV: ${e.message}")
+            e.printStackTrace()
+        }
+    }
+
+    private fun isBedArrived(grayImage: Mat): Boolean {
+        // Implement your logic to detect the arrival of the bed
+        // Example: Check for a significant change in brightness or color contrast
+        // You might need to experiment with threshold values based on your specific setup
+        // Return true if the bed has arrived, otherwise false
+
+        // Sample logic: Calculate the average intensity of the bottom part of the image
+        val numRows = grayImage.rows()
+        val numCols = grayImage.cols()
+        val bottomPart = grayImage.submat(numRows-10, numRows, 0, numCols)
+        val averageIntensity = Core.mean(bottomPart).`val`[0]
+
+        // Print the average intensity in the log
+        //Log.d("CameraActivity", "Average Intensity: $averageIntensity")
+        appendLogMessage("I: $averageIntensity, R: $numRows, C: $numCols")
+
+        // Display the gray image in grayImageView
+        updateGrayImage(gray)
+
+        // You can experiment with threshold values based on your specific setup
+        val YOUR_THRESHOLD = 200
+        return averageIntensity > YOUR_THRESHOLD
+    }
+
+    private fun updateGrayImage(grayImage: Mat) {
+        // Convert the OpenCV Mat to a Bitmap
+        val grayBitmap = Bitmap.createBitmap(grayImage.cols(), grayImage.rows(), Bitmap.Config.ARGB_8888)
+        Utils.matToBitmap(grayImage, grayBitmap)
+
+        // Display the Bitmap in grayImageView
+        runOnUiThread {
+            grayImageView.setImageBitmap(grayBitmap)
+        }
+    }
 
 }

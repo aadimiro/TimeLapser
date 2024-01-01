@@ -14,7 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-
-
 rootProject.name = "TimeElapser"
 include(":app")
