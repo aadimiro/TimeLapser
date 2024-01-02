@@ -1,4 +1,4 @@
-# Time Lapser for Flashforge Adventurer 3D printer with an Android Smartphone
+# Time Lapser for Flashforge Adventurer 3 3D printer with an Android Smartphone
 
 ## How and why is this project started ?
 On my current vacations, I wanted to explore how good OpenAI ChatGPT kann assist on software implementation.
