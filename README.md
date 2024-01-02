@@ -17,7 +17,7 @@ And it worked :-)!
 * This is implemented as a simple threshold of the average intensity of the bottom part of the image: when the black printer bed arrives to the front, the intensity ecrease to a lever lower than a Threshold.
 * The python script patches the gcode in order to bring the printer bed to the front after each layer is printed. Also the camera head is placed on the back and right of the printer.
 * To generate the video, just press the "volume down" button on the smartphone and wait.
-* The captured pictures are placed in separated the directories under the DCIM directory on the smartphone
+* The captured pictures are placed in separated the directories under the DCIM directory on the smartphone. This way, the video can also be made complicated outside the smartphone, having more processing possibilities.
 
 ## First results
 See the first video:
