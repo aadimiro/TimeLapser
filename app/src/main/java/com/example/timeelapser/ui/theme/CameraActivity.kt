@@ -3,11 +3,11 @@ package com.example.timeelapser.ui.theme
 // In your MainActivity.kt or your camera-related class
 
 import android.Manifest
-import android.R.attr
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.ImageFormat
+import android.graphics.Matrix
 import android.graphics.Rect
 import android.graphics.YuvImage
 import android.hardware.Camera
@@ -15,6 +15,7 @@ import android.os.Bundle
 import android.os.Environment
 import android.util.Log
 import android.view.KeyEvent
+import android.view.MotionEvent
 import android.view.Surface
 import android.view.SurfaceHolder
 import android.view.SurfaceView
@@ -30,7 +31,6 @@ import org.opencv.android.OpenCVLoader
 import org.opencv.android.Utils
 import org.opencv.core.Core
 import org.opencv.core.Mat
-import org.opencv.imgproc.Imgproc
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
@@ -57,6 +57,12 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
     private val cameraPermissionCode = 101
 
     private var pictureNumber = 0
+
+    private var lastTriggerTime: Long = 0
+    private var triggeravailable: Boolean = false
+    private val debounceTime1: Long = 1000 // Set your desired debounce time 1 in milliseconds
+    private val debounceTime2: Long = 8000 // Set your desired debounce time 2 in milliseconds
+    private var videoprocongoing: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -91,19 +97,6 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
 
     }
 
-    // Function to append log messages to the TextView
-/*    private fun appendLogMessage(message: String) {
-        GlobalScope.launch(Dispatchers.Main) {
-            logTextView.append("$message\n")
-
-            // Scroll to the bottom to show the latest log messages
-            val scrollAmount = logTextView.layout.getLineTop(logTextView.lineCount) - logTextView.height
-            if (scrollAmount > 0) {
-                logTextView.scrollTo(0, scrollAmount)
-            }
-        }
-    }*/
-
     private fun appendLogMessage(message: String) {
         runOnUiThread {
             logTextView.append("$message\n")
@@ -124,6 +117,7 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
                 return true
             }
             KeyEvent.KEYCODE_VOLUME_DOWN -> {
+                videoprocongoing = true
                 compileVideo()
                 return true
             }
@@ -200,9 +194,11 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
                     // Video compilation successful
                     println("Video compilation successful")
                     timeStampvid = SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.getDefault()).format(Date())
+                    videoprocongoing = false
                 } else {
                     // Handle failure
                     println("Video compilation failed, exit code: $rc")
+                    videoprocongoing = false
                 }
             }
         }
@@ -277,15 +273,12 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
     }
 
 
-
-
     private fun startCameraPreview() {
         try {
             camera = Camera.open()
             configureCameraPreviewSize()
             setCameraDisplayOrientation()
             setCameraZoom()
-
 
             val parameters = camera.parameters
 
@@ -304,7 +297,6 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
                 // Handle the case where NV21 is not supported, or choose another format if needed
             }
 
-
             // Check supported focus modes
             val supportedFocusModes = parameters.supportedFocusModes
             Log.d("CameraActivity", "Supported Focus Modes: ${supportedFocusModes.joinToString()}")
@@ -315,6 +307,12 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
                 Log.d("CameraActivity", "Autofocus enabled")
             } else {
                 Log.d("CameraActivity", "Autofocus not supported")
+            }
+
+            // Set touch focus listener on the SurfaceView
+            surfaceView.setOnTouchListener { _, event ->
+                handleTouchFocus(event)
+                true
             }
 
             camera.parameters = parameters
@@ -384,6 +382,63 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
 
         camera.parameters = parameters
     }
+
+    private fun handleTouchFocus(event: MotionEvent) {
+        try {
+            val rect = calculateFocusRect(event.x, event.y)
+
+            // Check if focus areas are supported
+            val parameters = camera.parameters
+            if (parameters.maxNumFocusAreas > 0) {
+                val focusAreas = mutableListOf<Camera.Area>()
+                focusAreas.add(Camera.Area(rect, 1000)) // 1000 is the weight, you can adjust it
+
+                parameters.focusAreas = focusAreas
+                parameters.meteringAreas = focusAreas
+                camera.parameters = parameters
+
+                // Call auto focus to apply the changes
+                camera.autoFocus { _, camera ->
+                    // You can handle the result of auto focus if needed
+                }
+                var eventx = event.x
+                var eventy = event.y
+                //appendLogMessage("Set focus point X:${eventx} Y:${eventy}")
+            }
+        } catch (e: Exception) {
+            Log.e("CameraActivity", "Error handling touch focus: ${e.message}")
+            //appendLogMessage("Error handling touch focus: ${e.message}")
+            e.printStackTrace()
+        }
+    }
+
+    private fun calculateFocusRect(x: Float, y: Float): Rect {
+        // Convert touch coordinates to camera coordinates
+        val matrix = Matrix()
+        surfaceView.matrix.invert(matrix)
+        val touchPoint = floatArrayOf(x, y)
+        matrix.mapPoints(touchPoint)
+
+        // Calculate focus area rectangle
+        val halfFocusAreaSize = 50 // You can adjust this size as needed
+        val focusArea = Rect(
+            clamp(touchPoint[0].toInt() - halfFocusAreaSize, 0, surfaceView.width - 1),
+            clamp(touchPoint[1].toInt() - halfFocusAreaSize, 0, surfaceView.height - 1),
+            clamp(touchPoint[0].toInt() + halfFocusAreaSize, 0, surfaceView.width - 1),
+            clamp(touchPoint[1].toInt() + halfFocusAreaSize, 0, surfaceView.height - 1)
+        )
+
+        return focusArea
+    }
+
+    private fun clamp(value: Int, min: Int, max: Int): Int {
+        return when {
+            value < min -> min
+            value > max -> max
+            else -> value
+        }
+    }
+
 
     private fun configureCameraPreviewSize() {
         val parameters = camera.parameters
@@ -496,6 +551,8 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
         // You might need to experiment with threshold values based on your specific setup
         // Return true if the bed has arrived, otherwise false
 
+
+
         Utils.bitmapToMat(grayImage, rgba)
 
         // Split the channels
@@ -518,9 +575,23 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
         // Display the gray image in grayImageView
         updateGrayImage(gray)
 
+        val currentTime = System.currentTimeMillis()
+
         // You can experiment with threshold values based on your specific setup
-        val YOUR_THRESHOLD = 200
-        return averageIntensity > YOUR_THRESHOLD
+        val YOUR_THRESHOLD = 50
+        var isTriggered = false
+
+        if ((averageIntensity < YOUR_THRESHOLD) && (currentTime - lastTriggerTime >= debounceTime2) && (videoprocongoing == false)) {
+            triggeravailable = true
+            lastTriggerTime = currentTime
+        }
+
+        if ((triggeravailable == true) && (currentTime - lastTriggerTime >= debounceTime1)) {
+            triggeravailable = false
+            isTriggered = true
+        }
+
+        return isTriggered
     }
 
     private fun updateGrayImage(grayImage: Mat) {
