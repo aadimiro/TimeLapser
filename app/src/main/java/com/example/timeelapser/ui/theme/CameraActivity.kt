@@ -3,11 +3,14 @@ package com.example.timeelapser.ui.theme
 // In your MainActivity.kt or your camera-related class
 
 import android.Manifest
+import android.R.attr
 import android.content.pm.PackageManager
-import android.hardware.Camera
-import android.app.Activity
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.ImageFormat
+import android.graphics.Rect
+import android.graphics.YuvImage
+import android.hardware.Camera
 import android.os.Bundle
 import android.os.Environment
 import android.util.Log
@@ -19,25 +22,21 @@ import android.view.WindowManager
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.widget.TextViewCompat
+import com.arthenica.mobileffmpeg.Config
+import com.arthenica.mobileffmpeg.FFmpeg
 import com.example.timeelapser.R
 import kotlinx.coroutines.*
-import org.opencv.core.CvType
-import org.opencv.core.Mat
-import org.opencv.core.Size
-import org.opencv.core.Core
-import org.opencv.imgproc.Imgproc
 import org.opencv.android.OpenCVLoader
-import org.opencv.android.BaseLoaderCallback
-import org.opencv.android.LoaderCallbackInterface
+import org.opencv.android.Utils
+import org.opencv.core.Core
+import org.opencv.core.Mat
+import org.opencv.imgproc.Imgproc
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import com.arthenica.mobileffmpeg.Config
-import com.arthenica.mobileffmpeg.FFmpeg
-import org.opencv.android.Utils
 
 
 class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
@@ -464,20 +463,24 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
     private fun processDataWithOpenCV(data: ByteArray) {
         try {
             // Convert the frame data to OpenCV Mat
-            val yuvImage = Mat(Size(surfaceView.width.toDouble(), surfaceView.height.toDouble()), CvType.CV_8UC1)
-            yuvImage.put(0, 0, data)
+            //val yuvImage = Mat(Size(surfaceView.width.toDouble(), surfaceView.height.toDouble()), CvType.CV_8UC1)
+            //yuvImage.put(0, 0, data)
+            val yuvImage = YuvImage(
+                data,
+                camera.parameters.previewFormat,
+                camera.parameters.previewSize.width,
+                camera.parameters.previewSize.height,
+               null
+            )
 
-            Imgproc.cvtColor(yuvImage, rgba, Imgproc.COLOR_YUV2RGB_NV21, 4)
-            Imgproc.cvtColor(rgba, gray, Imgproc.COLOR_RGBA2GRAY)
-            // Imgproc.cvtColor(yuvImage, gray, Imgproc.COLOR_YUV2GRAY_NV21,1)
+            // convert image to bitmap
+            val out = ByteArrayOutputStream()
+            yuvImage.compressToJpeg(Rect(0, 0, camera.parameters.previewSize.width, camera.parameters.previewSize.height), 50, out)
+            val imageBytes = out.toByteArray()
+            val image = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
 
-            Log.d("CameraActivity", "YUV Image Dimensions: ${yuvImage.width()} x ${yuvImage.height()}")
-            Log.d("CameraActivity", "RGBA Image Dimensions: ${rgba.width()} x ${rgba.height()}")
-            Log.d("CameraActivity", "Grayscale Image Dimensions: ${gray.width()} x ${gray.height()}")
-
-
-            // Analyze the grayscale image for brightness or color contrast change
-            if (isBedArrived(gray)) {
+             // Analyze the grayscale image for brightness or color contrast change
+            if (isBedArrived(image)) {
                 // Trigger capture or perform other actions
                 capturePicture()
             }
@@ -487,16 +490,25 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
         }
     }
 
-    private fun isBedArrived(grayImage: Mat): Boolean {
+    private fun isBedArrived(grayImage: Bitmap): Boolean {
         // Implement your logic to detect the arrival of the bed
         // Example: Check for a significant change in brightness or color contrast
         // You might need to experiment with threshold values based on your specific setup
         // Return true if the bed has arrived, otherwise false
 
+        Utils.bitmapToMat(grayImage, rgba)
+
+        // Split the channels
+        val channels = mutableListOf<Mat>()
+        Core.split(rgba, channels)
+
+        // Access the first channel
+        gray = channels[0]
+
         // Sample logic: Calculate the average intensity of the bottom part of the image
-        val numRows = grayImage.rows()
-        val numCols = grayImage.cols()
-        val bottomPart = grayImage.submat(numRows-10, numRows, 0, numCols)
+        val numRows = gray.rows()
+        val numCols = gray.cols()
+        val bottomPart = gray.submat(0, numRows, numCols-10, numCols)
         val averageIntensity = Core.mean(bottomPart).`val`[0]
 
         // Print the average intensity in the log
@@ -514,6 +526,11 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
     private fun updateGrayImage(grayImage: Mat) {
         // Convert the OpenCV Mat to a Bitmap
         val grayBitmap = Bitmap.createBitmap(grayImage.cols(), grayImage.rows(), Bitmap.Config.ARGB_8888)
+
+        Core.transpose(grayImage, grayImage)
+
+        // Flip the transposed matrix (change the second parameter to flip horizontally or vertically)
+        Core.flip(grayImage, grayImage, 1)
         Utils.matToBitmap(grayImage, grayBitmap)
 
         // Display the Bitmap in grayImageView

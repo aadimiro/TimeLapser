@@ -9,8 +9,8 @@
         android:id="@+id/logTextView"
         android:layout_width="match_parent"
         android:layout_height="50dp"
-        android:layout_alignParentTop="false"
-        android:layout_marginTop="0dp"
+        android:layout_alignParentTop="true"
+        android:layout_marginTop="380dp"
         android:background="#80000000"
         android:padding="8dp"
         android:textColor="#FFFFFF" />
@@ -19,14 +19,15 @@
         android:id="@+id/surfaceView"
         android:layout_width="1080px"
         android:layout_height="1080px"
-        android:layout_marginTop="65dp" />
+        android:layout_alignParentTop="true"
+        android:layout_marginTop="1dp" />
 
     <ImageView
         android:id="@+id/grayImageView"
-        android:layout_width="1080px"
-        android:layout_height="1080px"
-        android:layout_alignParentBottom="true"
-        android:layout_marginTop="146dp" />
+        android:layout_width="540px"
+        android:layout_height="540px"
+        android:layout_alignParentTop="true"
+        android:layout_marginTop="450dp" />
 
 
 </RelativeLayout>
