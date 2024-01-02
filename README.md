@@ -19,5 +19,8 @@ And it worked :-)!
 * To generate the video, just press the "volume down" button on the smartphone and wait.
 * The captured pictures are placed in separated the directories under the DCIM directory on the smartphone
 
+## First results
+See the first video:
+https://youtube.com/shorts/npaiBbHT8cs?si=XNsPOFgp2joKy5DW
 
 
