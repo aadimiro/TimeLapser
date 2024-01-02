@@ -1,33 +1,32 @@
-# Time Lapser for Flashforge Adventurer 3 3D printer with an Android Smartphone
+# Time Lapse for Flashforge Adventurer 3 3D Printer with an Android Smartphone
 
-## How and why is this project started ?
-On my current vacations, I wanted to explore how good OpenAI ChatGPT kann assist on software implementation.
-Although I have many years experience in embedded software development (specially in C), 5 days ago I had no idea about Android Studio, Kotlin, Gradle and android development at all. Also I had no idea how gcode works for the 3D printer.
-So I decided to take the challenge and see if I am able to implement make it to a running application in short time, assisted by ChatGPT.
-And it worked :-)!
+## How and Why This Project Started
+
+During my recent vacation, I wanted to explore how well OpenAI ChatGPT could assist in software implementation. Despite having many years of experience in embedded software development (especially in C), I had no knowledge of Android Studio, Kotlin, Gradle, and Android development. Additionally, I was unfamiliar with how G-code works for 3D printers. I decided to take on the challenge and see if I could create a functional application with the assistance of ChatGPT. Surprisingly, it worked!
 
 ## Applications and Scripts
-1) Main application for Android Smartphone
-   * Implemented in Android Studio with Kotlin
-   * Intefgrated ffmpeg for video generation and OpenCV for image processing
-3) Python script to patch gcode of 3d printer
 
-## How To use
-* The application will monitor the camera preview and detect the moment when the printer bed reaches the front of the printer. 
-* This is implemented as a simple threshold of the average intensity of the bottom part of the image: when the black printer bed arrives to the front, the intensity ecrease to a lever lower than a Threshold.
-* The python script patches the gcode in order to bring the printer bed to the front after each layer is printed. Also the camera head is placed on the back and right of the printer.
-* To generate the video, just press the "volume down" button on the smartphone and wait.
-* The captured pictures are placed in separated the directories under the DCIM directory on the smartphone. This way, the video can also be made complicated outside the smartphone, having more processing possibilities.
+1. **Main Application for Android Smartphone**
+   - Implemented in Android Studio with Kotlin
+   - Integrated FFmpeg for video generation and OpenCV for image processing
 
-## First results
-See the first video:
-https://youtube.com/shorts/npaiBbHT8cs?si=XNsPOFgp2joKy5DW
+2. **Python Script to Patch G-code of 3D Printer**
 
+## How to Use
 
-# Description of main module CameraActivitd.kt
+- The application monitors the camera preview and detects when the printer bed reaches the front of the printer.
+- This is achieved through a simple threshold of the average intensity of the bottom part of the image. When the black printer bed arrives at the front, the intensity decreases to a level below a set threshold.
+- The Python script patches the G-code to bring the printer bed to the front after each layer is printed. The camera head is positioned on the back and right of the printer.
+- To generate the video, press the "volume down" button on the smartphone and wait.
+- Captured pictures are stored in separate directories under the DCIM directory on the smartphone, allowing video compilation outside the smartphone for additional processing possibilities.
 
+## First Results
 
-The `CameraActivity` class is the main activity of the TimeElapser Android application, responsible for camera preview, picture capturing, video compilation, and bed arrival detection. Below is a breakdown of its structure and functionality.
+See the first video: [YouTube Link](https://youtube.com/shorts/npaiBbHT8cs?si=XNsPOFgp2joKy5DW)
+
+# Description of Main Module `CameraActivity.kt`
+
+The `CameraActivity` class is the main activity of the TimeLapser Android application, responsible for camera preview, picture capturing, video compilation, and bed arrival detection. Below is a breakdown of its structure and functionality.
 
 ## Dependencies and Imports
 
@@ -52,108 +51,80 @@ The activity imports necessary Android and third-party libraries, including Open
 - `debounceTime2`: Long - Configurable debounce time for preventing rapid triggers.
 - `videoProcOngoing`: Boolean - Flag indicating if video compilation is in progress.
 
-## onCreate Method
+## `onCreate` Method
 
 - Initializes OpenCV.
 - Sets up UI elements and permissions.
 - Initializes timestamp and starts camera preview.
 
-## onKeyDown Method
+## `onKeyDown` Method
 
 - Handles volume key events for picture capturing and video compilation.
 
-## compileVideo Method
+## `compileVideo` Method
 
 - Compiles images into a video using FFmpeg.
 - Uses coroutine for asynchronous execution.
 
-## createOutputVideoPath Method
+## `createOutputVideoPath` Method
 
 - Generates the output path for the compiled video.
 
-## capturePicture Method
+## `capturePicture` Method
 
 - Captures a picture using the camera.
 - Calls `savePicture` and restarts the camera preview.
 
-## savePictureAsync Method
+## `savePictureAsync` Method
 
 - Saves the captured picture asynchronously.
 
-## savePicture Method
+## `savePicture` Method
 
 - Calls `savePictureAsync` on the main thread.
 
-## getOutputMediaFile Method
+## `getOutputMediaFile` Method
 
 - Creates and returns the output file for saved pictures.
 
-## startCameraPreview Method
+## `startCameraPreview` Method
 
 - Initializes and starts the camera preview.
 - Configures camera parameters, preview size, and focus modes.
 - Sets touch focus listener on the `SurfaceView`.
 - Sets the preview callback for frame processing.
 
-## setCameraDisplayOrientation Method
+## `setCameraDisplayOrientation` Method
 
 - Sets the display orientation of the camera based on device rotation.
 
-## stopCameraPreview Method
+## `stopCameraPreview` Method
 
 - Stops and releases the camera preview.
 
-## setCameraZoom Method
+## `setCameraZoom` Method
 
 - Sets the camera's focus mode and zoom level.
 
-## handleTouchFocus Method
+## `handleTouchFocus` Method
 
 - Handles touch events for setting the focus area.
 - Uses camera parameters to set focus areas and metering areas.
 - Calls auto focus to apply changes.
 
-## calculateFocusRect Method
+## `calculateFocusRect` Method
 
 - Converts touch coordinates to camera coordinates.
 - Calculates a focus area rectangle.
 
-## configureCameraPreviewSize Method
+## `configureCameraPreviewSize` Method
 
 - Configures the camera preview size based on desired dimensions.
 
-## findBestPreviewSize Method
+## `findBestPreviewSize` Method
 
 - Finds the closest supported preview size to the desired size.
 
-## surfaceCreated Method
+## `surfaceCreated` Method
 
-- Initializes OpenCV matrices.
-- Starts the camera preview and sets the preview callback.
-
-## PreviewCallbackImpl Inner Class
-
-- Implements `Camera.PreviewCallback`.
-- Processes frame data with OpenCV.
-
-## surfaceDestroyed Method
-
-- Stops the camera preview.
-- Releases OpenCV matrices.
-
-## processDataWithOpenCV Method
-
-- Converts frame data to OpenCV Mat.
-- Calls `isBedArrived` for bed arrival detection.
-
-## isBedArrived Method
-
-- Implements bed arrival detection logic.
-- Converts grayscale image to OpenCV Mat.
-- Calculates average intensity and triggers based on threshold and debounce times.
-- Updates the grayscale image in `grayImageView`.
-
-## updateGrayImage Method
-
-- Converts OpenCV Mat to Bitmap.
-- Displays the Bitmap in `grayImageView`.
+- Initializes OpenCV matrices
