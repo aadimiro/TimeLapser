@@ -1,5 +1,7 @@
 # Time Lapse for Flashforge Adventurer 3 3D Printer with an Android Smartphone
 
+![Alt Time Lapse](TimeLapser.jpeg)
+
 ## How and Why This Project Started
 
 During my recent vacation, I wanted to explore how well OpenAI ChatGPT could assist in software implementation. Despite having many years of experience in embedded software development (especially in C), I had no knowledge of Android Studio, Kotlin, Gradle, and Android development. Additionally, I was unfamiliar with how G-code works for 3D printers. I decided to take on the challenge and see if I could create a functional application with the assistance of ChatGPT. Surprisingly, it worked!
