@@ -13,12 +13,14 @@ import android.graphics.YuvImage
 import android.hardware.Camera
 import android.os.Bundle
 import android.os.Environment
+import android.text.method.ScrollingMovementMethod
 import android.util.Log
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.Surface
 import android.view.SurfaceHolder
 import android.view.SurfaceView
+import android.view.View
 import android.view.WindowManager
 import android.widget.Button
 import android.widget.EditText
@@ -103,6 +105,9 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
         surfaceHolder.addCallback(this)
 
         LogTextView = findViewById(R.id.LogTextView)
+        // Set TextView to be scrollable
+        LogTextView.movementMethod = ScrollingMovementMethod.getInstance()
+
 
         ThresholdEditText = findViewById(R.id.Threshold)
         ThresholdEditText.setText("${Threshold}")
@@ -134,6 +139,9 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
 
         GenerateVideoButton = findViewById(R.id.GenerateVideo)
         GenerateVideoButton.setOnClickListener {
+            capturestarted=false
+            videoprocongoing = true
+            StatusCaptureEditText.setText("Capture stopped")
             StatusVideoEditText.setText("Compiling video")
             compileVideo()
         }
@@ -201,6 +209,8 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
                 add("-0001")
                 add("-i")
                 add(imagePattern)
+                add("-vf")
+                add("transpose=1")
                 add("-c:v")
                 add("libx264")
                 add("-r")

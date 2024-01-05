@@ -13,12 +13,14 @@
 
     <TextView
         android:id="@+id/LogTextView"
+        android:layout_below="@id/surfaceView"
         android:layout_width="match_parent"
         android:layout_height="50dp"
-        android:layout_below="@id/surfaceView"
         android:background="#80000000"
         android:padding="8dp"
-        android:textColor="#FFFFFF" />
+        android:textColor="#FFFFFF"
+        android:maxLines="100"
+        android:scrollbars="vertical"/>
 
     <EditText
         android:id="@+id/Intensity"
