@@ -155,20 +155,18 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
             val ffmpegCommand = mutableListOf<String>().apply {
                 add("-framerate")
                 add("15")
+                add("-pattern_type")
+                add("sequence")
+                add("-start_number")
+                add("-0001")
                 add("-i")
-                add(imagePattern) // Use explicit file list
-
-                // Add all image files to the input specification
-                imageFiles.forEach { add("-i"); add(it) }
-
-                // Add the remaining encoding options
+                add(imagePattern)
                 add("-c:v")
                 add("libx264")
                 add("-r")
                 add("25")
                 add("-pix_fmt")
                 add("yuv420p")
-
                 // Specify the output video path
                 add(videoOutputPath)
             }
