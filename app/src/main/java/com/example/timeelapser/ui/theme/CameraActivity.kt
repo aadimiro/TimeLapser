@@ -20,7 +20,10 @@ import android.view.Surface
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.view.WindowManager
+import android.widget.Button
+import android.widget.EditText
 import android.widget.ImageView
+import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.arthenica.mobileffmpeg.Config
@@ -43,16 +46,32 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
 
     private lateinit var timeStampvid: String
     private lateinit var camera: Camera
-    private lateinit var surfaceView: SurfaceView
+
     private lateinit var surfaceHolder: SurfaceHolder
-    private lateinit var grayImageView: ImageView
 
     private lateinit var rgba: Mat
     private lateinit var gray: Mat
 
-    private lateinit var logTextView: TextView
+    private lateinit var surfaceView: SurfaceView
+
+    private lateinit var LogTextView: TextView
+
+    private lateinit var IntensityEditText: EditText
+    private lateinit var ThresholdPlusButton: Button
+    private lateinit var ThresholdMinusButton: Button
+    private lateinit var ThresholdEditText: EditText
+
+    private lateinit var StartCaptureButton: Button
+    private lateinit var StopCaptureButton: Button
+    private lateinit var StatusCaptureEditText: EditText
+    private lateinit var VorgangnameEditText: EditText
+
+    private lateinit var GenerateVideoButton: Button
+    private lateinit var StatusVideoEditText: EditText
 
     private lateinit var ffmpeg: com.arthenica.mobileffmpeg.FFmpeg // Declare private variable
+
+    private var Threshold = 50
 
     private val cameraPermissionCode = 101
 
@@ -63,6 +82,7 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
     private val debounceTime1: Long = 1000 // Set your desired debounce time 1 in milliseconds
     private val debounceTime2: Long = 8000 // Set your desired debounce time 2 in milliseconds
     private var videoprocongoing: Boolean = false
+    private var capturestarted: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -75,19 +95,54 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
 
         setContentView(R.layout.activity_camera)
 
-        grayImageView = findViewById(R.id.grayImageView)
-
         // Keep the screen on
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-
-        // Initialize log TextView
-        logTextView = findViewById(R.id.logTextView)
-
-        timeStampvid = SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.getDefault()).format(Date())
 
         surfaceView = findViewById(R.id.surfaceView)
         surfaceHolder = surfaceView.holder
         surfaceHolder.addCallback(this)
+
+        LogTextView = findViewById(R.id.LogTextView)
+
+        ThresholdEditText = findViewById(R.id.Threshold)
+        ThresholdEditText.setText("${Threshold}")
+
+        IntensityEditText = findViewById(R.id.Intensity)
+        ThresholdPlusButton = findViewById(R.id.ThresholdPlus)
+        ThresholdPlusButton.setOnClickListener {
+            Threshold++
+            ThresholdEditText.setText("${Threshold}")
+        }
+        ThresholdMinusButton = findViewById(R.id.ThresholdMinus)
+        ThresholdMinusButton.setOnClickListener {
+            Threshold--
+            ThresholdEditText.setText("${Threshold}")
+        }
+
+        StartCaptureButton = findViewById(R.id.StartCapture)
+        StartCaptureButton.setOnClickListener {
+            capturestarted=true
+            StatusCaptureEditText.setText("Capture on going")
+        }
+        StopCaptureButton = findViewById(R.id.StopCapture)
+        StopCaptureButton.setOnClickListener {
+            capturestarted=false
+            StatusCaptureEditText.setText("Capture stopped")
+        }
+        StatusCaptureEditText = findViewById(R.id.StatusCapture)
+        VorgangnameEditText = findViewById(R.id.Vorgangname)
+
+        GenerateVideoButton = findViewById(R.id.GenerateVideo)
+        GenerateVideoButton.setOnClickListener {
+            StatusVideoEditText.setText("Compiling video")
+            compileVideo()
+        }
+
+        StatusVideoEditText = findViewById(R.id.StatusVideo)
+        StatusVideoEditText.setText("Video generation not running")
+
+        timeStampvid = SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.getDefault()).format(Date())
+        VorgangnameEditText.setText(timeStampvid)
 
         if (checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_DENIED) {
             requestPermissions(arrayOf(Manifest.permission.CAMERA), cameraPermissionCode)
@@ -99,31 +154,16 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
 
     private fun appendLogMessage(message: String) {
         runOnUiThread {
-            logTextView.append("$message\n")
+            LogTextView.append("$message\n")
 
             // Scroll to the bottom to show the latest log messages
-            val scrollAmount = logTextView.layout.getLineTop(logTextView.lineCount) - logTextView.height
+            val scrollAmount = LogTextView.layout.getLineTop(LogTextView.lineCount) - LogTextView.height
             if (scrollAmount > 0) {
-                logTextView.scrollTo(0, scrollAmount)
+                LogTextView.scrollTo(0, scrollAmount)
             }
         }
     }
 
-
-    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        when (keyCode) {
-            KeyEvent.KEYCODE_VOLUME_UP -> {
-                capturePicture()
-                return true
-            }
-            KeyEvent.KEYCODE_VOLUME_DOWN -> {
-                videoprocongoing = true
-                compileVideo()
-                return true
-            }
-            else -> return super.onKeyDown(keyCode, event)
-        }
-    }
 
     private fun compileVideo() {
         GlobalScope.launch(Dispatchers.IO) {
@@ -175,13 +215,13 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
             val commandString = ffmpegCommand.joinToString(" ")
 
             // Print the command to the log
-            println("FFmpeg Command: $commandString")
+            appendLogMessage("FFmpeg Command: $commandString")
 
             // Execute FFmpeg command using withContext
             val rc = withContext(Dispatchers.Default) {
                 Config.enableStatisticsCallback { statistics ->
                     // You can handle FFmpeg statistics here
-                    println("Statistics: $statistics")
+                    appendLogMessage("Statistics: $statistics")
                 }
 
                 FFmpeg.execute(ffmpegCommand.toTypedArray())
@@ -191,11 +231,14 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
                 if (rc == Config.RETURN_CODE_SUCCESS) {
                     // Video compilation successful
                     println("Video compilation successful")
+                    StatusVideoEditText.setText("Video compilation successful")
                     timeStampvid = SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.getDefault()).format(Date())
+                    VorgangnameEditText.setText(timeStampvid)
                     videoprocongoing = false
                 } else {
                     // Handle failure
                     println("Video compilation failed, exit code: $rc")
+                    StatusVideoEditText.setText("Video compilation failed, exit code: $rc")
                     videoprocongoing = false
                 }
             }
@@ -401,11 +444,11 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
                 }
                 var eventx = event.x
                 var eventy = event.y
-                //appendLogMessage("Set focus point X:${eventx} Y:${eventy}")
+                appendLogMessage("Set focus point X:${eventx} Y:${eventy}")
             }
         } catch (e: Exception) {
             Log.e("CameraActivity", "Error handling touch focus: ${e.message}")
-            //appendLogMessage("Error handling touch focus: ${e.message}")
+            appendLogMessage("Error handling touch focus: ${e.message}")
             e.printStackTrace()
         }
     }
@@ -498,8 +541,10 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
     // Inner class or object implementing Camera.PreviewCallback
     private inner class PreviewCallbackImpl : Camera.PreviewCallback {
         override fun onPreviewFrame(data: ByteArray, camera: Camera?) {
-            // Process the frame data with OpenCV
-            processDataWithOpenCV(data)
+            if (videoprocongoing == false) {
+                // Process the frame data with OpenCV
+                processDataWithOpenCV(data)
+            }
         }
     }
 
@@ -535,7 +580,9 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
              // Analyze the grayscale image for brightness or color contrast change
             if (isBedArrived(image)) {
                 // Trigger capture or perform other actions
-                capturePicture()
+                if (capturestarted==true){
+                    capturePicture()
+                }
             }
         } catch (e: Exception) {
             Log.e("CameraActivity", "Error processing frame with OpenCV: ${e.message}")
@@ -548,8 +595,6 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
         // Example: Check for a significant change in brightness or color contrast
         // You might need to experiment with threshold values based on your specific setup
         // Return true if the bed has arrived, otherwise false
-
-
 
         Utils.bitmapToMat(grayImage, rgba)
 
@@ -566,20 +611,14 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
         val bottomPart = gray.submat(0, numRows, numCols-10, numCols)
         val averageIntensity = Core.mean(bottomPart).`val`[0]
 
-        // Print the average intensity in the log
-        //Log.d("CameraActivity", "Average Intensity: $averageIntensity")
-        appendLogMessage("I: $averageIntensity, R: $numRows, C: $numCols")
-
-        // Display the gray image in grayImageView
-        updateGrayImage(gray)
+        IntensityEditText.setText("Intensity: ${averageIntensity}")
 
         val currentTime = System.currentTimeMillis()
 
-        // You can experiment with threshold values based on your specific setup
-        val YOUR_THRESHOLD = 50
+
         var isTriggered = false
 
-        if ((averageIntensity < YOUR_THRESHOLD) && (currentTime - lastTriggerTime >= debounceTime2) && (videoprocongoing == false)) {
+        if ((averageIntensity < Threshold) && (currentTime - lastTriggerTime >= debounceTime2) && (videoprocongoing == false)) {
             triggeravailable = true
             lastTriggerTime = currentTime
         }
@@ -590,22 +629,6 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
         }
 
         return isTriggered
-    }
-
-    private fun updateGrayImage(grayImage: Mat) {
-        // Convert the OpenCV Mat to a Bitmap
-        val grayBitmap = Bitmap.createBitmap(grayImage.cols(), grayImage.rows(), Bitmap.Config.ARGB_8888)
-
-        Core.transpose(grayImage, grayImage)
-
-        // Flip the transposed matrix (change the second parameter to flip horizontally or vertically)
-        Core.flip(grayImage, grayImage, 1)
-        Utils.matToBitmap(grayImage, grayBitmap)
-
-        // Display the Bitmap in grayImageView
-        runOnUiThread {
-            grayImageView.setImageBitmap(grayBitmap)
-        }
     }
 
 }
