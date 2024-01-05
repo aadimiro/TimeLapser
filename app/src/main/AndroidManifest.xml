@@ -26,10 +26,12 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
+            </activity>
         <activity
             android:name="com.example.timeelapser.ui.theme.CameraActivity"
-            android:theme="@style/Theme.TimeElapser">
+            android:theme="@style/Theme.TimeElapser"
+            android:screenOrientation="portrait"
+            android:configChanges="orientation|screenSize">
         </activity>
     </application>
 </manifest>

@@ -154,7 +154,7 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
 
             val ffmpegCommand = mutableListOf<String>().apply {
                 add("-framerate")
-                add("5")
+                add("15")
                 add("-i")
                 add(imagePattern) // Use explicit file list
 
@@ -165,7 +165,7 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
                 add("-c:v")
                 add("libx264")
                 add("-r")
-                add("30")
+                add("25")
                 add("-pix_fmt")
                 add("yuv420p")
 
