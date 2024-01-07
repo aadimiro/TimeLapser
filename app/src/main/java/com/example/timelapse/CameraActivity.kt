@@ -13,6 +13,8 @@ import android.graphics.YuvImage
 import android.hardware.Camera
 import android.os.Bundle
 import android.os.Environment
+import android.text.Editable
+import android.text.TextWatcher
 import android.text.method.ScrollingMovementMethod
 import android.util.Log
 import android.view.MotionEvent
@@ -57,18 +59,24 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback, BeepListener
 
     private lateinit var LogTextView: TextView
 
-    private lateinit var IntensityEditText: EditText
+    private lateinit var IntensityTextView: TextView
     private lateinit var ThresholdPlusButton: Button
     private lateinit var ThresholdMinusButton: Button
     private lateinit var ThresholdEditText: EditText
 
     private lateinit var StartCaptureButton: Button
     private lateinit var StopCaptureButton: Button
-    private lateinit var StatusCaptureEditText: EditText
-    private lateinit var VorgangnameEditText: EditText
+    private lateinit var StatusCaptureTextView: TextView
+    private lateinit var VorgangnameTextView: TextView
 
     private lateinit var GenerateVideoButton: Button
-    private lateinit var StatusVideoEditText: EditText
+    private lateinit var StatusVideoTextView: TextView
+
+    private lateinit var Debounce1TextTextView: TextView
+    private lateinit var Debounce1ValueEditText: EditText
+    private lateinit var Debounce2TextTextView: TextView
+    private lateinit var Debounce2ValueEditText: EditText
+
 
     private lateinit var ffmpeg: FFmpeg // Declare private variable
 
@@ -83,13 +91,13 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback, BeepListener
     }
 
 
-    private var pictureNumber = 0
+    private var pictureNumber = 1
     private var beepnumber = 0
 
     private var lastTriggerTime: Long = 0
     private var triggeravailable: Boolean = false
-    private val debounceTime1: Long = 500 // Set your desired debounce time 1 in milliseconds
-    private val debounceTime2: Long = 7000 // Set your desired debounce time 2 in milliseconds
+    private var debounceTime1: Long = 501 // Set your desired debounce time 1 in milliseconds
+    private var debounceTime2: Long = 7001 // Set your desired debounce time 2 in milliseconds
     private var videoprocongoing: Boolean = false
     private var capturestarted: Boolean = false
 
@@ -119,7 +127,7 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback, BeepListener
         ThresholdEditText = findViewById(R.id.Threshold)
         ThresholdEditText.setText("${Threshold}")
 
-        IntensityEditText = findViewById(R.id.Intensity)
+        IntensityTextView = findViewById(R.id.Intensity)
         ThresholdPlusButton = findViewById(R.id.ThresholdPlus)
         ThresholdPlusButton.setOnClickListener {
             Threshold++
@@ -134,31 +142,69 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback, BeepListener
         StartCaptureButton = findViewById(R.id.StartCapture)
         StartCaptureButton.setOnClickListener {
             capturestarted = true
-            StatusCaptureEditText.setText("Capture on going")
+            StatusCaptureTextView.setText("Capture on going")
         }
         StopCaptureButton = findViewById(R.id.StopCapture)
         StopCaptureButton.setOnClickListener {
             capturestarted = false
-            StatusCaptureEditText.setText("Capture stopped")
+            StatusCaptureTextView.setText("Capture stopped")
         }
-        StatusCaptureEditText = findViewById(R.id.StatusCapture)
-        VorgangnameEditText = findViewById(R.id.Vorgangname)
+        StatusCaptureTextView = findViewById(R.id.StatusCapture)
+        VorgangnameTextView = findViewById(R.id.Vorgangname)
 
         GenerateVideoButton = findViewById(R.id.GenerateVideo)
         GenerateVideoButton.setOnClickListener {
             capturestarted = false
             videoprocongoing = true
-            StatusCaptureEditText.setText("Capture stopped")
-            StatusVideoEditText.setText("Compiling video")
+            StatusCaptureTextView.setText("Capture stopped")
+            StatusVideoTextView.setText("Compiling video")
             compileVideo()
         }
 
-        StatusVideoEditText = findViewById(R.id.StatusVideo)
-        StatusVideoEditText.setText("Video generation not running")
+        StatusVideoTextView = findViewById(R.id.StatusVideo)
+        StatusVideoTextView.setText("Video generation not running")
+
+
+
+        Debounce1ValueEditText = findViewById(R.id.Debounce1Value)
+        Debounce1ValueEditText.setText(debounceTime1.toString())
+        Debounce1ValueEditText.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(charSequence: CharSequence?, start: Int, count: Int, after: Int) {
+                // This method is called to notify you that the characters within `charSequence` are about to be replaced with new text
+            }
+
+            override fun onTextChanged(charSequence: CharSequence?, start: Int, before: Int, count: Int) {
+                // This method is called to notify you that somewhere within `charSequence`, the characters have been replaced by new text
+            }
+            override fun afterTextChanged(editable: Editable?) {
+                val numberAsString: String = editable.toString()
+                if (numberAsString.isNotBlank()) {
+                    debounceTime1 = numberAsString.toLong()
+                }
+            }
+        })
+
+        Debounce2ValueEditText = findViewById(R.id.Debounce2Value)
+        Debounce2ValueEditText.setText(debounceTime2.toString())
+        Debounce2ValueEditText.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(charSequence: CharSequence?, start: Int, count: Int, after: Int) {
+                // This method is called to notify you that the characters within `charSequence` are about to be replaced with new text
+            }
+
+            override fun onTextChanged(charSequence: CharSequence?, start: Int, before: Int, count: Int) {
+                // This method is called to notify you that somewhere within `charSequence`, the characters have been replaced by new text
+            }
+            override fun afterTextChanged(editable: Editable?) {
+                val numberAsString: String = editable.toString()
+                if (numberAsString.isNotBlank()) {
+                    debounceTime2 = numberAsString.toLong()
+                }
+            }
+        })
 
         timeStampvid = SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.getDefault()).format(Date())
-        VorgangnameEditText.setText(timeStampvid)
-        pictureNumber = 0
+        VorgangnameTextView.setText(timeStampvid)
+        pictureNumber = 1
 
         if (checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_DENIED) {
             requestPermissions(arrayOf(Manifest.permission.CAMERA), cameraPermissionCode)
@@ -286,16 +332,16 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback, BeepListener
                 if (rc == Config.RETURN_CODE_SUCCESS) {
                     // Video compilation successful
                     println("Video compilation successful")
-                    StatusVideoEditText.setText("Video compilation successful")
+                    StatusVideoTextView.setText("Video compilation successful")
                     timeStampvid =
                         SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.getDefault()).format(Date())
-                    VorgangnameEditText.setText(timeStampvid)
-                    pictureNumber = 0
+                    VorgangnameTextView.setText(timeStampvid)
+                    pictureNumber = 1
                     videoprocongoing = false
                 } else {
                     // Handle failure
                     println("Video compilation failed, exit code: $rc")
-                    StatusVideoEditText.setText("Video compilation failed, exit code: $rc")
+                    StatusVideoTextView.setText("Video compilation failed, exit code: $rc")
                     videoprocongoing = false
                 }
             }
@@ -706,7 +752,7 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback, BeepListener
         val bottomPart = gray.submat(0, numRows, numCols - 10, numCols)
         val averageIntensity = Core.mean(bottomPart).`val`[0]
 
-        IntensityEditText.setText("Intensity: ${averageIntensity}")
+        IntensityTextView.setText("${averageIntensity}")
 
         val currentTime = System.currentTimeMillis()
 
