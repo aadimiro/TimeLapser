@@ -1,4 +1,4 @@
-package com.example.timeelapser
+package com.example.timelapse
 
 import org.junit.Test
 

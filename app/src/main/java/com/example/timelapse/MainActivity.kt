@@ -1,4 +1,4 @@
-package com.example.timeelapser
+package com.example.timelapse
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -6,14 +6,10 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import com.example.timeelapser.ui.theme.TimeElapserTheme
+import com.example.timelapse.ui.theme.TimeElapserTheme
 import android.content.Intent
 import android.util.Log
-import com.example.timeelapser.ui.theme.CameraActivity
 import org.opencv.android.OpenCVLoader
 
 

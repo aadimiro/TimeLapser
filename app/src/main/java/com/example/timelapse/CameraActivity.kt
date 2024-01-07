@@ -1,4 +1,4 @@
-package com.example.timeelapser.ui.theme
+package com.example.timelapse
 
 // In your MainActivity.kt or your camera-related class
 
@@ -13,20 +13,24 @@ import android.graphics.YuvImage
 import android.hardware.Camera
 import android.os.Bundle
 import android.os.Environment
+import android.text.method.ScrollingMovementMethod
 import android.util.Log
-import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.Surface
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.view.WindowManager
-import android.widget.ImageView
+import android.widget.Button
+import android.widget.EditText
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.arthenica.mobileffmpeg.Config
 import com.arthenica.mobileffmpeg.FFmpeg
 import com.example.timeelapser.R
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.opencv.android.OpenCVLoader
 import org.opencv.android.Utils
 import org.opencv.core.Core
@@ -39,30 +43,55 @@ import java.util.Date
 import java.util.Locale
 
 
-class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
+class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback, BeepListener {
 
     private lateinit var timeStampvid: String
     private lateinit var camera: Camera
-    private lateinit var surfaceView: SurfaceView
+
     private lateinit var surfaceHolder: SurfaceHolder
-    private lateinit var grayImageView: ImageView
 
     private lateinit var rgba: Mat
     private lateinit var gray: Mat
 
-    private lateinit var logTextView: TextView
+    private lateinit var surfaceView: SurfaceView
 
-    private lateinit var ffmpeg: com.arthenica.mobileffmpeg.FFmpeg // Declare private variable
+    private lateinit var LogTextView: TextView
+
+    private lateinit var IntensityEditText: EditText
+    private lateinit var ThresholdPlusButton: Button
+    private lateinit var ThresholdMinusButton: Button
+    private lateinit var ThresholdEditText: EditText
+
+    private lateinit var StartCaptureButton: Button
+    private lateinit var StopCaptureButton: Button
+    private lateinit var StatusCaptureEditText: EditText
+    private lateinit var VorgangnameEditText: EditText
+
+    private lateinit var GenerateVideoButton: Button
+    private lateinit var StatusVideoEditText: EditText
+
+    private lateinit var ffmpeg: FFmpeg // Declare private variable
+
+    private lateinit var beepDetector: BeepDetector
+
+    private var Threshold = 50
 
     private val cameraPermissionCode = 101
 
+    companion object {
+        private const val REQUEST_RECORD_AUDIO_PERMISSION = 200
+    }
+
+
     private var pictureNumber = 0
+    private var beepnumber = 0
 
     private var lastTriggerTime: Long = 0
     private var triggeravailable: Boolean = false
-    private val debounceTime1: Long = 1000 // Set your desired debounce time 1 in milliseconds
-    private val debounceTime2: Long = 8000 // Set your desired debounce time 2 in milliseconds
+    private val debounceTime1: Long = 500 // Set your desired debounce time 1 in milliseconds
+    private val debounceTime2: Long = 7000 // Set your desired debounce time 2 in milliseconds
     private var videoprocongoing: Boolean = false
+    private var capturestarted: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -75,19 +104,61 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
 
         setContentView(R.layout.activity_camera)
 
-        grayImageView = findViewById(R.id.grayImageView)
-
         // Keep the screen on
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-
-        // Initialize log TextView
-        logTextView = findViewById(R.id.logTextView)
-
-        timeStampvid = SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.getDefault()).format(Date())
 
         surfaceView = findViewById(R.id.surfaceView)
         surfaceHolder = surfaceView.holder
         surfaceHolder.addCallback(this)
+
+        LogTextView = findViewById(R.id.LogTextView)
+        // Set TextView to be scrollable
+        LogTextView.movementMethod = ScrollingMovementMethod.getInstance()
+
+
+        ThresholdEditText = findViewById(R.id.Threshold)
+        ThresholdEditText.setText("${Threshold}")
+
+        IntensityEditText = findViewById(R.id.Intensity)
+        ThresholdPlusButton = findViewById(R.id.ThresholdPlus)
+        ThresholdPlusButton.setOnClickListener {
+            Threshold++
+            ThresholdEditText.setText("${Threshold}")
+        }
+        ThresholdMinusButton = findViewById(R.id.ThresholdMinus)
+        ThresholdMinusButton.setOnClickListener {
+            Threshold--
+            ThresholdEditText.setText("${Threshold}")
+        }
+
+        StartCaptureButton = findViewById(R.id.StartCapture)
+        StartCaptureButton.setOnClickListener {
+            capturestarted = true
+            StatusCaptureEditText.setText("Capture on going")
+        }
+        StopCaptureButton = findViewById(R.id.StopCapture)
+        StopCaptureButton.setOnClickListener {
+            capturestarted = false
+            StatusCaptureEditText.setText("Capture stopped")
+        }
+        StatusCaptureEditText = findViewById(R.id.StatusCapture)
+        VorgangnameEditText = findViewById(R.id.Vorgangname)
+
+        GenerateVideoButton = findViewById(R.id.GenerateVideo)
+        GenerateVideoButton.setOnClickListener {
+            capturestarted = false
+            videoprocongoing = true
+            StatusCaptureEditText.setText("Capture stopped")
+            StatusVideoEditText.setText("Compiling video")
+            compileVideo()
+        }
+
+        StatusVideoEditText = findViewById(R.id.StatusVideo)
+        StatusVideoEditText.setText("Video generation not running")
+
+        timeStampvid = SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.getDefault()).format(Date())
+        VorgangnameEditText.setText(timeStampvid)
+        pictureNumber = 0
 
         if (checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_DENIED) {
             requestPermissions(arrayOf(Manifest.permission.CAMERA), cameraPermissionCode)
@@ -95,35 +166,57 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
             startCameraPreview()
         }
 
+        // Create an instance of BeepDetector
+        beepDetector = BeepDetector(this)
+
+        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(
+                arrayOf(Manifest.permission.RECORD_AUDIO),
+                REQUEST_RECORD_AUDIO_PERMISSION
+            )
+        } else {
+            startBeepDetection()
+        }
+
     }
+
+    private fun startBeepDetection() {
+        beepDetector.startListening()
+    }
+
+    private fun stopBeepDetection() {
+        beepDetector.stopListening()
+    }
+
+    // Implement BeepListener interface method
+    override fun onBeepDetected() {
+        // Handle beep detection
+        // This method will be called when a beep is detected
+        appendLogMessage("Beep detected number $beepnumber")
+        beepnumber++
+        // Analyze the grayscale image for brightness or color contrast change
+        if (isBeepDetected()) {
+            // Trigger capture or perform other actions
+            if (capturestarted == true) {
+                capturePicture()
+            }
+        }
+    }
+
 
     private fun appendLogMessage(message: String) {
         runOnUiThread {
-            logTextView.append("$message\n")
+            LogTextView.append("$message\n")
 
             // Scroll to the bottom to show the latest log messages
-            val scrollAmount = logTextView.layout.getLineTop(logTextView.lineCount) - logTextView.height
+            val scrollAmount =
+                LogTextView.layout.getLineTop(LogTextView.lineCount) - LogTextView.height
             if (scrollAmount > 0) {
-                logTextView.scrollTo(0, scrollAmount)
+                LogTextView.scrollTo(0, scrollAmount)
             }
         }
     }
 
-
-    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        when (keyCode) {
-            KeyEvent.KEYCODE_VOLUME_UP -> {
-                capturePicture()
-                return true
-            }
-            KeyEvent.KEYCODE_VOLUME_DOWN -> {
-                videoprocongoing = true
-                compileVideo()
-                return true
-            }
-            else -> return super.onKeyDown(keyCode, event)
-        }
-    }
 
     private fun compileVideo() {
         GlobalScope.launch(Dispatchers.IO) {
@@ -154,21 +247,21 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
 
             val ffmpegCommand = mutableListOf<String>().apply {
                 add("-framerate")
-                add("5")
+                add("15")
+                add("-pattern_type")
+                add("sequence")
+                add("-start_number")
+                add("-0001")
                 add("-i")
-                add(imagePattern) // Use explicit file list
-
-                // Add all image files to the input specification
-                imageFiles.forEach { add("-i"); add(it) }
-
-                // Add the remaining encoding options
+                add(imagePattern)
+                add("-vf")
+                add("transpose=1")
                 add("-c:v")
                 add("libx264")
                 add("-r")
-                add("30")
+                add("25")
                 add("-pix_fmt")
                 add("yuv420p")
-
                 // Specify the output video path
                 add(videoOutputPath)
             }
@@ -177,13 +270,13 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
             val commandString = ffmpegCommand.joinToString(" ")
 
             // Print the command to the log
-            println("FFmpeg Command: $commandString")
+            appendLogMessage("FFmpeg Command: $commandString")
 
             // Execute FFmpeg command using withContext
             val rc = withContext(Dispatchers.Default) {
                 Config.enableStatisticsCallback { statistics ->
                     // You can handle FFmpeg statistics here
-                    println("Statistics: $statistics")
+                    appendLogMessage("Statistics: $statistics")
                 }
 
                 FFmpeg.execute(ffmpegCommand.toTypedArray())
@@ -193,11 +286,16 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
                 if (rc == Config.RETURN_CODE_SUCCESS) {
                     // Video compilation successful
                     println("Video compilation successful")
-                    timeStampvid = SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.getDefault()).format(Date())
+                    StatusVideoEditText.setText("Video compilation successful")
+                    timeStampvid =
+                        SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.getDefault()).format(Date())
+                    VorgangnameEditText.setText(timeStampvid)
+                    pictureNumber = 0
                     videoprocongoing = false
                 } else {
                     // Handle failure
                     println("Video compilation failed, exit code: $rc")
+                    StatusVideoEditText.setText("Video compilation failed, exit code: $rc")
                     videoprocongoing = false
                 }
             }
@@ -215,6 +313,7 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
         val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
         return File(outputVideoDir, "timeelaps_video_$timeStampvid.mp4").absolutePath
     }
+
     private fun capturePicture() {
         GlobalScope.launch(Dispatchers.IO) {
             try {
@@ -256,7 +355,7 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
         }
     }
 
-    private fun getOutputMediaFile(): File? {
+    private fun getOutputMediaFile(): File {
         val dcimDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM)
         val mediaStorageDir = File(dcimDir, "TimeElaps")
 
@@ -287,7 +386,10 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
 
             // Check supported preview formats
             val supportedPreviewFormats = parameters.supportedPreviewFormats
-            Log.d("CameraActivity", "Supported Preview Formats: ${supportedPreviewFormats.joinToString()}")
+            Log.d(
+                "CameraActivity",
+                "Supported Preview Formats: ${supportedPreviewFormats.joinToString()}"
+            )
 
             // Check if NV21 is supported
             if (supportedPreviewFormats.contains(ImageFormat.NV21)) {
@@ -326,7 +428,6 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
     }
 
 
-
     private fun setCameraDisplayOrientation() {
         val info = Camera.CameraInfo()
         Camera.getCameraInfo(Camera.CameraInfo.CAMERA_FACING_BACK, info)
@@ -350,7 +451,6 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
 
         camera.setDisplayOrientation(result)
     }
-
 
 
     private fun stopCameraPreview() {
@@ -385,32 +485,57 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
 
     private fun handleTouchFocus(event: MotionEvent) {
         try {
-            val rect = calculateFocusRect(event.x, event.y)
+            // Cancel any ongoing autofocus
+            camera.cancelAutoFocus()
+
+            // Calculate focus area based on touch coordinates
+            val focusRect = calculateFocusRect(event.x, event.y)
+
+            // Get current camera parameters
+            val parameters = camera.parameters
+
+            // Set focus mode to auto if it's not already
+            if (parameters.focusMode == Camera.Parameters.FOCUS_MODE_AUTO) {
+                parameters.focusMode = Camera.Parameters.FOCUS_MODE_AUTO
+            }
 
             // Check if focus areas are supported
-            val parameters = camera.parameters
             if (parameters.maxNumFocusAreas > 0) {
                 val focusAreas = mutableListOf<Camera.Area>()
-                focusAreas.add(Camera.Area(rect, 1000)) // 1000 is the weight, you can adjust it
-
+                focusAreas.add(Camera.Area(focusRect, 1000))
                 parameters.focusAreas = focusAreas
-                parameters.meteringAreas = focusAreas
-                camera.parameters = parameters
-
-                // Call auto focus to apply the changes
-                camera.autoFocus { _, camera ->
-                    // You can handle the result of auto focus if needed
-                }
-                var eventx = event.x
-                var eventy = event.y
-                //appendLogMessage("Set focus point X:${eventx} Y:${eventy}")
             }
+
+            // Apply parameters and start preview
+            camera.cancelAutoFocus()
+            camera.parameters = parameters
+            camera.startPreview()
+
+            // Start autofocus with callback
+            camera.autoFocus { success, camera ->
+                if (!camera.parameters.focusMode.equals(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE)) {
+                    val newParameters = camera.parameters
+                    newParameters.focusMode = Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE
+
+                    // Clear focus areas if they were set
+                    if (newParameters.maxNumFocusAreas > 0) {
+                        newParameters.focusAreas = null
+                    }
+
+                    // Apply new parameters and start preview
+                    camera.parameters = newParameters
+                    camera.startPreview()
+                }
+            }
+            var eventx = event.x
+            var eventy = event.y
+            appendLogMessage("Set focus point X:${eventx} Y:${eventy}")
         } catch (e: Exception) {
-            Log.e("CameraActivity", "Error handling touch focus: ${e.message}")
-            //appendLogMessage("Error handling touch focus: ${e.message}")
+            appendLogMessage("Error handling touch focus: ${e.message}")
             e.printStackTrace()
         }
     }
+
 
     private fun calculateFocusRect(x: Float, y: Float): Rect {
         // Convert touch coordinates to camera coordinates
@@ -460,7 +585,11 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
         }
     }
 
-    private fun findBestPreviewSize(sizes: List<Camera.Size>, desiredWidth: Int, desiredHeight: Int): Camera.Size? {
+    private fun findBestPreviewSize(
+        sizes: List<Camera.Size>,
+        desiredWidth: Int,
+        desiredHeight: Int
+    ): Camera.Size? {
         var bestSize: Camera.Size? = null
         var minDiff = Int.MAX_VALUE
 
@@ -475,7 +604,7 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
             }
             var sizestrinw = size.width
             var sizestrinh = size.height
-            Log.d("SIZESTRING","W: ${sizestrinw} x H:${sizestrinh}")
+            Log.d("SIZESTRING", "W: ${sizestrinw} x H:${sizestrinh}")
         }
 
         return bestSize
@@ -500,8 +629,10 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
     // Inner class or object implementing Camera.PreviewCallback
     private inner class PreviewCallbackImpl : Camera.PreviewCallback {
         override fun onPreviewFrame(data: ByteArray, camera: Camera?) {
-            // Process the frame data with OpenCV
-            processDataWithOpenCV(data)
+            if (videoprocongoing == false) {
+                // Process the frame data with OpenCV
+                processDataWithOpenCV(data)
+            }
         }
     }
 
@@ -525,19 +656,28 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
                 camera.parameters.previewFormat,
                 camera.parameters.previewSize.width,
                 camera.parameters.previewSize.height,
-               null
+                null
             )
 
             // convert image to bitmap
             val out = ByteArrayOutputStream()
-            yuvImage.compressToJpeg(Rect(0, 0, camera.parameters.previewSize.width, camera.parameters.previewSize.height), 50, out)
+            yuvImage.compressToJpeg(
+                Rect(
+                    0,
+                    0,
+                    camera.parameters.previewSize.width,
+                    camera.parameters.previewSize.height
+                ), 50, out
+            )
             val imageBytes = out.toByteArray()
             val image = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
 
-             // Analyze the grayscale image for brightness or color contrast change
+            // Analyze the grayscale image for brightness or color contrast change
             if (isBedArrived(image)) {
                 // Trigger capture or perform other actions
-                capturePicture()
+                if (capturestarted == true) {
+                    capturePicture()
+                }
             }
         } catch (e: Exception) {
             Log.e("CameraActivity", "Error processing frame with OpenCV: ${e.message}")
@@ -551,8 +691,6 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
         // You might need to experiment with threshold values based on your specific setup
         // Return true if the bed has arrived, otherwise false
 
-
-
         Utils.bitmapToMat(grayImage, rgba)
 
         // Split the channels
@@ -565,23 +703,17 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
         // Sample logic: Calculate the average intensity of the bottom part of the image
         val numRows = gray.rows()
         val numCols = gray.cols()
-        val bottomPart = gray.submat(0, numRows, numCols-10, numCols)
+        val bottomPart = gray.submat(0, numRows, numCols - 10, numCols)
         val averageIntensity = Core.mean(bottomPart).`val`[0]
 
-        // Print the average intensity in the log
-        //Log.d("CameraActivity", "Average Intensity: $averageIntensity")
-        appendLogMessage("I: $averageIntensity, R: $numRows, C: $numCols")
-
-        // Display the gray image in grayImageView
-        updateGrayImage(gray)
+        IntensityEditText.setText("Intensity: ${averageIntensity}")
 
         val currentTime = System.currentTimeMillis()
 
-        // You can experiment with threshold values based on your specific setup
-        val YOUR_THRESHOLD = 50
+
         var isTriggered = false
 
-        if ((averageIntensity < YOUR_THRESHOLD) && (currentTime - lastTriggerTime >= debounceTime2) && (videoprocongoing == false)) {
+        if ((averageIntensity < Threshold) && (currentTime - lastTriggerTime >= debounceTime2) && (videoprocongoing == false)) {
             triggeravailable = true
             lastTriggerTime = currentTime
         }
@@ -594,20 +726,44 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
         return isTriggered
     }
 
-    private fun updateGrayImage(grayImage: Mat) {
-        // Convert the OpenCV Mat to a Bitmap
-        val grayBitmap = Bitmap.createBitmap(grayImage.cols(), grayImage.rows(), Bitmap.Config.ARGB_8888)
+    private fun isBeepDetected(): Boolean {
 
-        Core.transpose(grayImage, grayImage)
+        val currentTime = System.currentTimeMillis()
 
-        // Flip the transposed matrix (change the second parameter to flip horizontally or vertically)
-        Core.flip(grayImage, grayImage, 1)
-        Utils.matToBitmap(grayImage, grayBitmap)
+        var isTriggered = false
 
-        // Display the Bitmap in grayImageView
-        runOnUiThread {
-            grayImageView.setImageBitmap(grayBitmap)
+        if ((currentTime - lastTriggerTime >= debounceTime2) && (videoprocongoing == false)) {
+            triggeravailable = true
+            lastTriggerTime = currentTime
+        }
+
+        if ((triggeravailable == true) && (currentTime - lastTriggerTime >= debounceTime1)) {
+            triggeravailable = false
+            isTriggered = true
+        }
+
+        return isTriggered
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        when (requestCode) {
+            REQUEST_RECORD_AUDIO_PERMISSION -> {
+                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    // Permission granted, proceed with your audio processing logic
+                    appendLogMessage("Record audio permission granted")
+                    startBeepDetection()
+
+                } else {
+                    appendLogMessage("Record audio permission denied")
+                }
+            }
         }
     }
+
 
 }

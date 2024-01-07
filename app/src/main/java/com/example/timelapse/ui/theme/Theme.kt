@@ -1,4 +1,4 @@
-package com.example.timeelapser.ui.theme
+package com.example.timelapse.ui.theme
 
 import android.app.Activity
 import android.os.Build

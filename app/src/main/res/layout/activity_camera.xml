@@ -3,31 +3,107 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context="com.example.timeelapser.ui.theme.CameraActivity">
-
-    <TextView
-        android:id="@+id/logTextView"
-        android:layout_width="match_parent"
-        android:layout_height="50dp"
-        android:layout_alignParentTop="true"
-        android:layout_marginTop="380dp"
-        android:background="#80000000"
-        android:padding="8dp"
-        android:textColor="#FFFFFF" />
+    tools:context="com.example.timelapse.CameraActivity">
 
     <SurfaceView
         android:id="@+id/surfaceView"
         android:layout_width="1080px"
         android:layout_height="1080px"
-        android:layout_alignParentTop="true"
-        android:layout_marginTop="1dp" />
+        android:layout_alignParentTop="true"/>
 
-    <ImageView
-        android:id="@+id/grayImageView"
-        android:layout_width="540px"
-        android:layout_height="540px"
-        android:layout_alignParentTop="true"
-        android:layout_marginTop="450dp" />
+    <TextView
+        android:id="@+id/LogTextView"
+        android:layout_below="@id/surfaceView"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:background="#80000000"
+        android:padding="8dp"
+        android:textColor="#FFFFFF"
+        android:maxLines="100"
+        android:scrollbars="vertical"/>
 
+    <EditText
+        android:id="@+id/Intensity"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/LogTextView"
+        android:ems="10"
+        android:inputType="text"
+        android:text="Intensity: " />
+
+    <Button
+        android:id="@+id/ThresholdPlus"
+        android:layout_below="@id/Intensity"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Threshold +" />
+
+    <Button
+        android:id="@+id/ThresholdMinus"
+        android:layout_below="@id/Intensity"
+        android:layout_toRightOf="@id/ThresholdPlus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Threshold -" />
+
+    <EditText
+        android:id="@+id/Threshold"
+        android:layout_below="@id/Intensity"
+        android:layout_toRightOf="@id/ThresholdMinus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:ems="10"
+        android:inputType="text" />
+
+    <Button
+        android:id="@+id/StartCapture"
+        android:layout_below="@id/ThresholdPlus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Start Capture" />
+
+    <Button
+        android:id="@+id/StopCapture"
+        android:layout_below="@id/StartCapture"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Stop Capture" />
+
+    <EditText
+        android:id="@+id/StatusCapture"
+        android:layout_below="@id/ThresholdPlus"
+        android:layout_toRightOf="@id/StartCapture"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:ems="10"
+        android:inputType="text"
+        android:text="Status Capture" />
+
+    <EditText
+        android:id="@+id/Vorgangname"
+        android:layout_below="@id/StartCapture"
+        android:layout_toRightOf="@id/StopCapture"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:ems="10"
+        android:inputType="text"
+        android:text="Vorgangname" />
+
+    <Button
+        android:id="@+id/GenerateVideo"
+        android:layout_below="@id/StopCapture"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Generate Video" />
+
+    <EditText
+        android:id="@+id/StatusVideo"
+        android:layout_below="@id/StopCapture"
+        android:layout_toRightOf="@id/GenerateVideo"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:ems="10"
+        android:inputType="text"
+        android:text="Status Video" />
 
 </RelativeLayout>

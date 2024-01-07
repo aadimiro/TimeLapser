@@ -1,4 +1,4 @@
-package com.example.timeelapser.ui.theme
+package com.example.timelapse.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
