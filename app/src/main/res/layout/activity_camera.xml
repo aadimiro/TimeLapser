@@ -1,4 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="com.example.timelapse.CameraActivity">
+
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
@@ -22,14 +28,23 @@
         android:maxLines="100"
         android:scrollbars="vertical"/>
 
-    <EditText
-        android:id="@+id/Intensity"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+    <TextView
+        android:id="@+id/IntensityText"
+        android:layout_width="wrap_content"
+        android:layout_height="48dp"
         android:layout_below="@id/LogTextView"
         android:ems="10"
+        android:text="Intensity:" />
+
+    <TextView
+        android:id="@+id/Intensity"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_below="@id/LogTextView"
+        android:layout_toRightOf="@id/IntensityText"
+        android:ems="10"
         android:inputType="text"
-        android:text="Intensity: " />
+        android:text="-" />
 
     <Button
         android:id="@+id/ThresholdPlus"
@@ -51,9 +66,10 @@
         android:layout_below="@id/Intensity"
         android:layout_toRightOf="@id/ThresholdMinus"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_height="48dp"
         android:ems="10"
-        android:inputType="text" />
+        android:inputType="text"
+        android:text="-"/>
 
     <Button
         android:id="@+id/StartCapture"
@@ -69,25 +85,25 @@
         android:layout_height="wrap_content"
         android:text="Stop Capture" />
 
-    <EditText
+    <TextView
         android:id="@+id/StatusCapture"
         android:layout_below="@id/ThresholdPlus"
         android:layout_toRightOf="@id/StartCapture"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="48dp"
         android:ems="10"
         android:inputType="text"
         android:text="Status Capture" />
 
-    <EditText
+    <TextView
         android:id="@+id/Vorgangname"
         android:layout_below="@id/StartCapture"
         android:layout_toRightOf="@id/StopCapture"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="48dp"
         android:ems="10"
         android:inputType="text"
-        android:text="Vorgangname" />
+        android:text="Timestamp" />
 
     <Button
         android:id="@+id/GenerateVideo"
@@ -96,14 +112,51 @@
         android:layout_height="wrap_content"
         android:text="Generate Video" />
 
-    <EditText
+    <TextView
         android:id="@+id/StatusVideo"
         android:layout_below="@id/StopCapture"
         android:layout_toRightOf="@id/GenerateVideo"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="48dp"
         android:ems="10"
         android:inputType="text"
         android:text="Status Video" />
 
+    <TextView
+        android:id="@+id/Debounce1Text"
+        android:layout_width="wrap_content"
+        android:layout_height="48dp"
+        android:layout_below="@id/GenerateVideo"
+        android:ems="10"
+        android:text="Debounce 1:" />
+
+    <EditText
+        android:id="@+id/Debounce1Value"
+        android:layout_width="wrap_content"
+        android:layout_height="48dp"
+        android:layout_below="@id/GenerateVideo"
+        android:layout_toRightOf="@id/Debounce1Text"
+        android:ems="10"
+        android:inputType="number"
+        android:text="500" />
+
+    <TextView
+        android:id="@+id/Debounce2Text"
+        android:layout_width="wrap_content"
+        android:layout_height="48dp"
+        android:layout_below="@id/Debounce1Text"
+        android:ems="10"
+        android:text="Debounce 2:" />
+
+    <EditText
+        android:id="@+id/Debounce2Value"
+        android:layout_width="wrap_content"
+        android:layout_height="48dp"
+        android:layout_below="@id/Debounce1Text"
+        android:layout_toRightOf="@id/Debounce2Text"
+        android:ems="10"
+        android:inputType="number"
+        android:text="7000" />
+
 </RelativeLayout>
+</ScrollView>
