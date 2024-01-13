@@ -24,6 +24,7 @@ import android.view.SurfaceView
 import android.view.WindowManager
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.arthenica.mobileffmpeg.Config
@@ -59,6 +60,7 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback, BeepListener
 
     private lateinit var LogTextView: TextView
 
+    private lateinit var PictureImageView: ImageView
     private lateinit var IntensityTextView: TextView
     private lateinit var ThresholdPlusButton: Button
     private lateinit var ThresholdMinusButton: Button
@@ -96,8 +98,8 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback, BeepListener
 
     private var lastTriggerTime: Long = 0
     private var triggeravailable: Boolean = false
-    private var debounceTime1: Long = 501 // Set your desired debounce time 1 in milliseconds
-    private var debounceTime2: Long = 7001 // Set your desired debounce time 2 in milliseconds
+    private var debounceTime1: Long = 100 // Set your desired debounce time 1 in milliseconds
+    private var debounceTime2: Long = 3000 // Set your desired debounce time 2 in milliseconds
     private var videoprocongoing: Boolean = false
     private var capturestarted: Boolean = false
 
@@ -118,6 +120,8 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback, BeepListener
         surfaceView = findViewById(R.id.surfaceView)
         surfaceHolder = surfaceView.holder
         surfaceHolder.addCallback(this)
+
+        PictureImageView = findViewById(R.id.PictureView)
 
         LogTextView = findViewById(R.id.LogTextView)
         // Set TextView to be scrollable
@@ -367,6 +371,29 @@ class CameraActivity : AppCompatActivity(), SurfaceHolder.Callback, BeepListener
                     savePicture(data)
                     // Remove the increment here, it's done in savePicture now
                     camera.startPreview()
+                    val originalBitmap = BitmapFactory.decodeByteArray(data, 0, data.size)
+
+                    // Rotate the Bitmap by 90 degrees clockwise
+                    val matrix = Matrix()
+                    matrix.postRotate(90f)
+                    val rotatedBitmap = Bitmap.createBitmap(
+                        originalBitmap,
+                        0,
+                        0,
+                        originalBitmap.width,
+                        originalBitmap.height,
+                        matrix,
+                        true
+                    )
+
+                    // Update the UI on the main thread
+                    runOnUiThread {
+                        // Assuming you have an ImageView with the id "imageView" in your layout
+                        val imageView: ImageView = findViewById(R.id.PictureView)
+
+                        // Set the rotated Bitmap in the ImageView
+                        imageView.setImageBitmap(rotatedBitmap)
+                    }
                 }
             } catch (e: Exception) {
                 Log.e("CameraActivity", "Error capturing picture: ${e.message}")
