@@ -1,10 +1,7 @@
-# Time Lapse for Flashforge Adventurer 3 3D Printer with an Android Smartphone
+# Time Lapse for Flashforge "Adventurer 3" 3D Printer with an Android Smartphone
 
 ![Alt Time Lapse](TimeLapser.jpeg)
 
-## How and Why This Project Started
-
-During my recent vacation, I wanted to explore how well OpenAI ChatGPT could assist in software implementation. Despite having many years of experience in embedded software development (especially in C), I had no knowledge of Android Studio, Kotlin, Gradle, and Android development. Additionally, I was unfamiliar with how G-code works for 3D printers. I decided to take on the challenge and see if I could create a functional application with the assistance of ChatGPT. Surprisingly, it worked!
 
 ## Applications and Scripts
 
@@ -12,19 +9,41 @@ During my recent vacation, I wanted to explore how well OpenAI ChatGPT could ass
    - Implemented in Android Studio with Kotlin
    - Integrated FFmpeg for video generation and OpenCV for image processing
 
-2. **Python Script to Patch G-code of 3D Printer**
+2. **Python Script to Patch G-code of 3D Printer**: 
+   - 3dprinterskript/3delapser.py
 
 ## How to Use
 
-- The application monitors the camera preview and detects when the printer bed reaches the front of the printer.
-- This is achieved through a simple threshold of the average intensity of the bottom part of the image. When the black printer bed arrives at the front, the intensity decreases to a level below a set threshold.
-- The Python script patches the G-code to bring the printer bed to the front after each layer is printed. The camera head is positioned on the back and right of the printer.
-- To generate the video, press the "volume down" button on the smartphone and wait.
-- Captured pictures are stored in separate directories under the DCIM directory on the smartphone, allowing video compilation outside the smartphone for additional processing possibilities.
+### Application
+- The application monitors the camera preview and detects when the printer bed reaches the front of the printer, in order to trigger a picture capture.
+- This is achieved by comparing a simple threshold of the average intensity of the bottom part of the image. When the black printer bed arrives at the front, the intensity decreases to a level below a set threshold. You shall position your smartphone and adjust the threshold, for optimal triggering, although the default values works normally fine.
+- To set the focus of your camera, just tip on the screen to set the focus point. It is very important to set the focus point correctly before starting capture, so take time to do it right.
+- To start capturing picture, press the "Start capture" button. Capture status is shown in the status field. Last captured picture is shown for control on top right of the screen.
+- To generate the video, stop the picture capture first with corresponding button, then press "generate video" button and wait for ready video compilation, which can take several time, depending on the number of pictures.
+- Captured pictures and video are stored in separate directories under the DCIM directory on the smartphone, allowing video compilation outside the smartphone for additional processing possibilities.
+
+#### Possible adjustments:
+- Threshold: Threshold to trigger picture captured, based on the average intensity of the bottom part of the image.
+- Debounce Time 1: Delay \[ms\]  between bed arrival and picture capture 
+- Debounce Time 2: Blocking time \[ms\] for capturing pictures after a picture was captured.
+
+### G-code patcher
+- Slice your 3D model with Flashprint and save as \<model name\>.gcode
+- Patch with: 
+   - python 3delapser.py \<model name\>.gcode
+   - The Python script patches the G-code to bring the printer bed to the front after each layer is printed. The camera head is positioned on the back and right of the printer.
+- Load the patched file \<model name\>_mod.gcode in Flashprint and print
+
 
 ## First Results
 
 See the first video: [YouTube Link](https://youtube.com/shorts/npaiBbHT8cs?si=XNsPOFgp2joKy5DW)
+
+
+## How and Why This Project Started
+
+During my recent vacation, I wanted to explore how well OpenAI ChatGPT could assist in software implementation. Despite having many years of experience in embedded software development (especially in C), I had no knowledge of Android Studio, Kotlin, Gradle, and Android development. Additionally, I was unfamiliar with how G-code works for 3D printers. I decided to take on the challenge and see if I could create a functional application with the assistance of ChatGPT. Surprisingly, it worked!
+
 
 # Description of Main Module `CameraActivity.kt`
 
