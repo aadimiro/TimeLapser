@@ -37,7 +37,7 @@
 
 ## First Results
 
-New videso, see the new improved result!: [YouTube Link](https://youtube.com/shorts/u1YLS9d8Gzg?si=WoZzKgy8dSzSu5VT)
+**New video, see the new improved result !!!**: [YouTube Link](https://youtube.com/shorts/u1YLS9d8Gzg?si=WoZzKgy8dSzSu5VT)
 
 First video (old): [YouTube Link](https://youtube.com/shorts/npaiBbHT8cs?si=XNsPOFgp2joKy5DW)
 
