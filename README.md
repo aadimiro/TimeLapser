@@ -2,6 +2,12 @@
 
 ![Alt Time Lapse](TimeLapser_1.jpeg)
 
+## Videos
+
+- See it in action: [YouTube Link](https://youtu.be/q7-WIcfvCJ4)
+- See improved results: [YouTube Link](https://youtube.com/shorts/u1YLS9d8Gzg?si=WoZzKgy8dSzSu5VT)
+- Historical first video:  [YouTube Link](https://youtube.com/shorts/npaiBbHT8cs?si=XNsPOFgp2joKy5DW)
+
 
 ## Applications and Scripts
 
