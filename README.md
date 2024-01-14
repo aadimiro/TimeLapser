@@ -1,6 +1,6 @@
 # Time Lapse for Flashforge "Adventurer 3" 3D Printer with an Android Smartphone
 
-![Alt Time Lapse](TimeLapser.jpeg)
+![Alt Time Lapse](TimeLapser_1.jpeg)
 
 
 ## Applications and Scripts
