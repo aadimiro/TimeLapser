@@ -57,6 +57,8 @@ During my recent vacation, I wanted to explore how well OpenAI ChatGPT could ass
 
 The `CameraActivity` class is the main activity of the TimeLapser Android application, responsible for camera preview, picture capturing, video compilation, and bed arrival detection. Below is a breakdown of its structure and functionality.
 
+![Activity Diagram](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/aadimiro/TimeLapser/master/app/src/main/java/com/example/timelapse/CameraActivity_AD.puml)
+
 ## Dependencies and Imports
 
 The activity imports necessary Android and third-party libraries, including OpenCV and FFmpeg.
