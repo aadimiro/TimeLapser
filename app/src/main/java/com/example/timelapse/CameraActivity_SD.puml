@@ -1,0 +1,54 @@
+@startuml
+
+actor User
+
+participant CameraActivity
+participant SurfaceHolder
+participant Camera
+participant BeepDetector
+participant FFmpeg
+participant Environment
+participant File
+participant Bitmap
+
+User -> CameraActivity: Start Activity
+activate CameraActivity
+
+User -> CameraActivity: Click Generate Video Button
+activate CameraActivity
+CameraActivity -> FFmpeg: compileVideo()
+activate FFmpeg
+FFmpeg --> CameraActivity: Video compilation successful
+deactivate FFmpeg
+CameraActivity -> User: Video compilation successful
+deactivate CameraActivity
+
+User -> CameraActivity: Click Start Capture Button
+activate CameraActivity
+CameraActivity -> Camera: capturePicture()
+activate Camera
+Camera -> CameraActivity: Picture taken
+deactivate Camera
+CameraActivity -> Camera: startPreview()
+activate Camera
+Camera --> CameraActivity: Preview started
+deactivate Camera
+deactivate CameraActivity
+
+User -> CameraActivity: Beep detected
+activate CameraActivity
+CameraActivity -> BeepDetector: startListening()
+activate BeepDetector
+BeepDetector --> CameraActivity: onBeepDetected()
+deactivate BeepDetector
+CameraActivity -> Camera: capturePicture()
+activate Camera
+Camera -> CameraActivity: Picture taken
+deactivate Camera
+CameraActivity -> Camera: startPreview()
+activate Camera
+Camera --> CameraActivity: Preview started
+deactivate Camera
+deactivate CameraActivity
+
+@enduml

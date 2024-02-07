@@ -1,0 +1,36 @@
+@startuml
+
+title Camera Activity
+
+[*] --> onCreate
+onCreate --> startCameraPreview : granted camera permission
+startCameraPreview --> surfaceCreated
+surfaceCreated --> processDataWithOpenCV
+processDataWithOpenCV --> isBedArrived
+isBedArrived --> capturePicture : if true
+capturePicture --> savePicture
+savePicture --> PictureImageView : update UI
+isBedArrived --> isBeepDetected
+isBeepDetected --> capturePicture : if true
+capturePicture --> savePicture
+savePicture --> PictureImageView : update UI
+isBeepDetected --> [*] : loop until activity is destroyed
+
+onCreate --> startBeepDetection : granted audio permission
+startBeepDetection --> onBeepDetected : when beep is detected
+onBeepDetected --> isBeepDetected : check if capture started
+isBeepDetected --> capturePicture : if true
+capturePicture --> savePicture
+savePicture --> PictureImageView : update UI
+isBeepDetected --> [*] : loop until activity is destroyed
+
+onCreate --> onRequestPermissionsResult : denied audio permission
+onRequestPermissionsResult --> [*] : loop until activity is destroyed
+
+onCreate --> GenerateVideoButton : click
+GenerateVideoButton --> compileVideo
+
+compileVideo --> withContext : execute FFmpeg command
+withContext --> [*] : Video compilation successful or failed
+
+@enduml

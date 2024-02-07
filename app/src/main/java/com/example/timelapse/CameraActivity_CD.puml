@@ -1,0 +1,147 @@
+@startuml
+
+class CameraActivity {
+    - timeStampvid: String
+    - camera: Camera
+    - surfaceHolder: SurfaceHolder
+    - rgba: Mat
+    - gray: Mat
+    - surfaceView: SurfaceView
+    - LogTextView: TextView
+    - PictureImageView: ImageView
+    - IntensityTextView: TextView
+    - ThresholdPlusButton: Button
+    - ThresholdMinusButton: Button
+    - ThresholdEditText: EditText
+    - StartCaptureButton: Button
+    - StopCaptureButton: Button
+    - StatusCaptureTextView: TextView
+    - VorgangnameTextView: TextView
+    - GenerateVideoButton: Button
+    - StatusVideoTextView: TextView
+    - Debounce1TextTextView: TextView
+    - Debounce1ValueEditText: EditText
+    - Debounce2TextTextView: TextView
+    - Debounce2ValueEditText: EditText
+    - ffmpeg: FFmpeg
+    - beepDetector: BeepDetector
+    - Threshold: Int
+    - cameraPermissionCode: Int
+    - pictureNumber: Int
+    - beepnumber: Int
+    - lastTriggerTime: Long
+    - triggeravailable: Boolean
+    - debounceTime1: Long
+    - debounceTime2: Long
+    - videoprocongoing: Boolean
+    - capturestarted: Boolean
+    + onCreate(savedInstanceState: Bundle): Unit
+    + startBeepDetection(): Unit
+    + stopBeepDetection(): Unit
+    + appendLogMessage(message: String): Unit
+    + compileVideo(): Unit
+    + createOutputVideoPath(): String
+    + capturePicture(): Unit
+    + savePictureAsync(data: ByteArray): File?
+    + savePicture(data: ByteArray): Unit
+    + getOutputMediaFile(): File
+    + startCameraPreview(): Unit
+    + setCameraDisplayOrientation(): Unit
+    + stopCameraPreview(): Unit
+    + setCameraZoom(): Unit
+    + handleTouchFocus(event: MotionEvent): Unit
+    + calculateFocusRect(x: Float, y: Float): Rect
+    + configureCameraPreviewSize(): Unit
+    + findBestPreviewSize(sizes: List<Camera.Size>, desiredWidth: Int, desiredHeight: Int): Camera.Size?
+    + processDataWithOpenCV(data: ByteArray): Unit
+    + isBedArrived(grayImage: Bitmap): Boolean
+    + isBeepDetected(): Boolean
+    + onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray): Unit
+}
+
+class BeepDetector {
+    + startListening(): Unit
+    + stopListening(): Unit
+}
+
+class FFmpeg {
+    + execute(commands: Array<String>): Int
+}
+
+class Camera {
+    + open(): Camera
+    + takePicture(shutter: Camera.ShutterCallback?, raw: Camera.PictureCallback?, jpeg: Camera.PictureCallback?): Unit
+    + startPreview(): Unit
+    + stopPreview(): Unit
+    + release(): Unit
+    + setDisplayOrientation(degrees: Int): Unit
+    + setPreviewCallback(callback: Camera.PreviewCallback?): Unit
+    + cancelAutoFocus(): Unit
+    + autoFocus(cb: Camera.AutoFocusCallback?): Unit
+}
+
+class Mat {
+    // Mat class implementation details
+}
+
+class SurfaceView {
+    // SurfaceView class implementation details
+}
+
+class SurfaceHolder {
+    // SurfaceHolder class implementation details
+}
+
+class TextView {
+    // TextView class implementation details
+}
+
+class ImageView {
+    // ImageView class implementation details
+}
+
+class EditText {
+    // EditText class implementation details
+}
+
+class Button {
+    // Button class implementation details
+}
+
+class Rect {
+    // Rect class implementation details
+}
+
+class MotionEvent {
+    // MotionEvent class implementation details
+}
+
+class Bundle {
+    // Bundle class implementation details
+}
+
+class File {
+    // File class implementation details
+}
+
+class Bitmap {
+    // Bitmap class implementation details
+}
+
+CameraActivity -- BeepDetector
+CameraActivity -- FFmpeg
+CameraActivity -- Camera
+CameraActivity -- Mat
+CameraActivity -- SurfaceView
+CameraActivity -- SurfaceHolder
+CameraActivity -- TextView
+CameraActivity -- ImageView
+CameraActivity -- EditText
+CameraActivity -- Button
+CameraActivity -- Rect
+CameraActivity -- MotionEvent
+CameraActivity -- Bundle
+CameraActivity -- File
+CameraActivity -- Bitmap
+
+@enduml
